@@ -9,15 +9,13 @@ class User
     public $email;
     public $password;
     public $status;
-    public $lastAccessed;
 
-    public function __construct($id, $name, $email, $password, $status, $lastAccessed)
+    public function __construct($id, $name, $email, $password, $status)
     {
         $this->id = $id;
         $this->name = $name;
         $this->email = $email;
         $this->password = $password;
         $this->status = $status;
-        $this->lastAccessed = $lastAccessed;
     }
 }

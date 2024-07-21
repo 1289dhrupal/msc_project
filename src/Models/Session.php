@@ -8,10 +8,9 @@ class Session
     public $apiKey;
     public $createdAt;
 
-    public function __construct($userId, $apiKey, $createdAt)
+    public function __construct($userId, $apiKey)
     {
         $this->userId = $userId;
         $this->apiKey = $apiKey;
-        $this->createdAt = $createdAt;
     }
 }

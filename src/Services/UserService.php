@@ -30,7 +30,7 @@ class UserService
         $user = $this->userRepository->getUserByEmail($email);
         if ($user && password_verify($password, $user->password)) {
             $apiKey = bin2hex(random_bytes(32));
-            $session = new Session($user->id, $apiKey, date('Y-m-d H:i:s'));
+            $session = new Session($user->id, $apiKey);
             $this->sessionRepository->createSession($session);
             $this->userRepository->updateUserLastAccessed($user->id);
             return $apiKey;
@@ -41,10 +41,12 @@ class UserService
     public function authenticate($apiKey)
     {
         $session = $this->sessionRepository->getSessionByApiKey($apiKey);
+
         if ($session) {
             $user = $this->userRepository->getUserById($session->userId);
             return $user;
         }
+
         return null;
     }
 

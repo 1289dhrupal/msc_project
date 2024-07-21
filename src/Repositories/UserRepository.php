@@ -2,6 +2,7 @@
 
 namespace MscProject\Repositories;
 
+use LDAP\Result;
 use MscProject\Database;
 use MscProject\Models\User;
 use PDO;
@@ -21,7 +22,12 @@ class UserRepository
         $stmt->bindParam(':id', $id);
         $stmt->execute();
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return new User($result['id'], $result['name'], $result['email'], $result['password'], $result['status'], $result['last_accessed']);
+
+        if ($result != false) {
+            return new User($result['id'], $result['name'], $result['email'], $result['password'], $result['status']);
+        }
+
+        return null;
     }
 
     public function getUserByEmail($email)
@@ -30,7 +36,12 @@ class UserRepository
         $stmt->bindParam(':email', $email);
         $stmt->execute();
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return new User($result['id'], $result['name'], $result['email'], $result['password'], $result['status'], $result['last_accessed']);
+
+        if ($result !== false) {
+            return new User($result['id'], $result['name'], $result['email'], $result['password'], $result['status']);
+        }
+
+        return null;
     }
 
     public function createUser(User $user)
