@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace MscProject\Services;
 
 use MscProject\Repositories\UserRepository;
@@ -9,48 +11,73 @@ use MscProject\Models\Session;
 
 class UserService
 {
-    private $userRepository;
-    private $sessionRepository;
+    private UserRepository $userRepository;
+    private SessionRepository $sessionRepository;
 
-    public function __construct()
+    public function __construct(UserRepository $userRepository, SessionRepository $sessionRepository)
     {
-        $this->userRepository = new UserRepository();
-        $this->sessionRepository = new SessionRepository();
+        $this->userRepository = $userRepository;
+        $this->sessionRepository = $sessionRepository;
     }
 
-    public function registerUser($name, $email, $password)
+    public function registerUser(string $name, string $email, string $password): bool
     {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new \ErrorException('Invalid email address', severity: E_USER_WARNING);
+        }
+
+        if (strlen($password) < 8) {
+            throw new \ErrorException('Password must be at least 8 characters long', severity: E_USER_WARNING);
+        }
+
+        // name must be alphnumeric and can include spaces and dots and 3 characters long atleast
+        if (!preg_match('/^[a-zA-Z0-9 .]{3,}$/', $name)) {
+            throw new \ErrorException('Name must be alphanumeric and can include spaces and dots', severity: E_USER_WARNING);
+        }
+
+        $user = $this->userRepository->getUserByEmail($email);
+
+        if ($user !== null) {
+            throw new \ErrorException('User already exists', severity: E_USER_WARNING);
+        }
+
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-        $user = new User(null, $name, $email, $hashedPassword, 'inactive', null);
+        $user = new User(null, $name, $email, $hashedPassword, 'pending');
         return $this->userRepository->createUser($user);
     }
 
-    public function loginUser($email, $password)
+    public function loginUser(string $email, string $password): ?string
     {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new \ErrorException('Invalid email address', severity: E_USER_WARNING);
+        }
+
+        if (strlen($password) < 8) {
+            throw new \ErrorException('Password must be at least 8 characters long', severity: E_USER_WARNING);
+        }
+
         $user = $this->userRepository->getUserByEmail($email);
-        if ($user && password_verify($password, $user->password)) {
-            $apiKey = bin2hex(random_bytes(32));
-            $session = new Session($user->id, $apiKey);
-            $this->sessionRepository->createSession($session);
-            $this->userRepository->updateUserLastAccessed($user->id);
-            return $apiKey;
-        }
-        return null;
-    }
 
-    public function authenticate($apiKey)
-    {
-        $session = $this->sessionRepository->getSessionByApiKey($apiKey);
-
-        if ($session) {
-            $user = $this->userRepository->getUserById($session->userId);
-            return $user;
+        if ($user === null || !password_verify($password, $user->password)) {
+            throw new \ErrorException('Incorrect Credentials', severity: E_USER_WARNING);
         }
 
-        return null;
+        if ($user->status === 'pending') {
+            throw new \ErrorException('User account is pending email verification', severity: E_USER_WARNING);
+        }
+
+        if ($user->status === 'inactive') {
+            throw new \ErrorException('User account is inactive, please contact the admin', severity: E_USER_WARNING);
+        }
+
+        $apiKey = bin2hex(random_bytes(32));
+        $session = new Session($user->id, $apiKey);
+        $this->sessionRepository->createSession($session);
+        $this->userRepository->updateUserLastAccessed($user->id);
+        return $apiKey;
     }
 
-    public function logoutUser($apiKey)
+    public function logoutUser(string $apiKey): bool
     {
         return $this->sessionRepository->deleteSessionByApiKey($apiKey);
     }

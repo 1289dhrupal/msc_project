@@ -1,60 +1,53 @@
 <?php
 
+declare(strict_types=1);
+
 namespace MscProject\Controllers;
 
+use ErrorException;
+use MscProject\Models\Response;
+use MscProject\Models\SuccessResponse;
 use MscProject\Services\UserService;
+use MscProject\Models\User;
 
 class UserController
 {
-    private $service;
+    private UserService $service;
 
-    public function __construct()
+    public function __construct(UserService $service)
     {
-        $this->service = new UserService();
+        $this->service = $service;
     }
 
-    public function register()
+    public function register(): Response
     {
         $input = json_decode(file_get_contents('php://input'), true);
         $name = $input['name'] ?? '';
         $email = $input['email'] ?? '';
         $password = $input['password'] ?? '';
-        $result = $this->service->registerUser($name, $email, $password);
-        echo json_encode(['success' => $result]);
+
+        $this->service->registerUser($name, $email, $password);
+
+        return new SuccessResponse('User registration successful');
     }
 
-    public function login()
+    public function login(): Response
     {
         $input = json_decode(file_get_contents('php://input'), true);
         $email = $input['email'] ?? '';
         $password = $input['password'] ?? '';
         $apiKey = $this->service->loginUser($email, $password);
-        if ($apiKey) {
-            echo json_encode(['apiKey' => $apiKey]);
-        } else {
-            header('HTTP/1.0 401 Unauthorized');
-            echo json_encode(['error' => 'Invalid email or password']);
-        }
+
+        return new SuccessResponse('User login successful', ['apiKey' => $apiKey]);
     }
 
-    public function authenticate()
+    public function logout(): Response
     {
         $headers = apache_request_headers();
         $apiKey = $headers['Authorization'] ?? '';
-        $user = $this->service->authenticate($apiKey);
-        if ($user) {
-            echo json_encode($user);
-        } else {
-            header('HTTP/1.0 401 Unauthorized');
-            echo json_encode(['error' => 'Invalid API key']);
-        }
-    }
 
-    public function logout()
-    {
-        $headers = apache_request_headers();
-        $apiKey = $headers['Authorization'] ?? '';
-        $result = $this->service->logoutUser($apiKey);
-        echo json_encode(['success' => $result]);
+        $this->service->logoutUser($apiKey);
+
+        return new SuccessResponse('User logout successful');
     }
 }

@@ -1,16 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace MscProject\Models;
 
 class User
 {
-    public $id;
-    public $name;
-    public $email;
-    public $password;
-    public $status;
+    public ?int $id;
+    public string $name;
+    public string $email;
+    public string $password;
+    public string $status;
 
-    public function __construct($id, $name, $email, $password, $status)
+    public function __construct(?int $id, string $name, string $email, string $password, string $status)
     {
         $this->id = $id;
         $this->name = $name;

@@ -1,0 +1,11 @@
+https://campus.cs.le.ac.uk/gitlab/dps30
+
+gitlab token
+glpat-op8bD1-_wVb9cmLyb9KL
+
+
+https://campus.cs.le.ac.uk/gitlab/api/v4/projects?access_token=glpat-op8bD1-_wVb9cmLyb9KL
+
+
+curl --header "Authorization: Bearer glpat-op8bD1-_wVb9cmLyb9KL" "https://campus.cs.le.ac.uk/gitlab/api/v4/projects"
+
