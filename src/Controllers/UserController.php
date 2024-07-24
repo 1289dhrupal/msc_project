@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace MscProject\Controllers;
 
-use ErrorException;
 use MscProject\Models\Response;
 use MscProject\Models\SuccessResponse;
 use MscProject\Services\UserService;
-use MscProject\Models\User;
 
 class UserController
 {
@@ -22,11 +20,8 @@ class UserController
     public function register(): Response
     {
         $input = json_decode(file_get_contents('php://input'), true);
-        $name = $input['name'] ?? '';
-        $email = $input['email'] ?? '';
-        $password = $input['password'] ?? '';
-
-        $this->service->registerUser($name, $email, $password);
+        $input = array_merge(array('name' => '', 'email' => '', 'password' => ''), $input);
+        $this->service->registerUser($input['name'], $input['email'], $input['password']);
 
         return new SuccessResponse('User registration successful');
     }
@@ -34,9 +29,8 @@ class UserController
     public function login(): Response
     {
         $input = json_decode(file_get_contents('php://input'), true);
-        $email = $input['email'] ?? '';
-        $password = $input['password'] ?? '';
-        $apiKey = $this->service->loginUser($email, $password);
+        $input = array_merge(array('email' => '', 'password' => ''), $input);
+        $apiKey = $this->service->loginUser($input['email'], $input['password']);
 
         return new SuccessResponse('User login successful', ['apiKey' => $apiKey]);
     }
