@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace MscProject\Middleware;
 
+use ErrorException;
 use MscProject\Repositories\UserRepository;
 use MscProject\Repositories\SessionRepository;
 use MscProject\Models\User;
@@ -19,25 +20,22 @@ class AuthMiddleware
         $this->sessionRepository = $sessionRepository;
     }
 
-    public function execute(): ?bool
+    public function execute(): void
     {
         $headers = apache_request_headers();
         $apiKey = $headers['Authorization'] ?? '';
-        return $this->authenticate($apiKey);
+        $this->authenticate($apiKey);
     }
 
-    private function authenticate(string $apiKey): bool
+    private function authenticate(string $apiKey): void
     {
         $session = $this->sessionRepository->getSessionByApiKey($apiKey);
 
-        if ($session) {
-            $user = $this->userRepository->getUserById($session->userId);
-            $_SESSION['user'] = $user;
-            return true;
-        } else {
-            header('HTTP/1.0 401 Unauthorized');
-            echo json_encode(['error' => 'Invalid API key']);
-            return false;
+        if ($session === null) {
+            throw new \ErrorException('Invalid API key', 401, E_USER_WARNING);
         }
+
+        $user = $this->userRepository->getUserById($session->userId);
+        $_SESSION['user'] = $user;
     }
 }

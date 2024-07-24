@@ -33,7 +33,7 @@ class SessionRepository
         $stmt->execute();
 
         if ($stmt->rowCount() === 0) {
-            throw new ErrorException('Invalid API key', severity: E_USER_WARNING);
+            return null;
         }
 
         $result = $stmt->fetch(PDO::FETCH_ASSOC);

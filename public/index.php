@@ -2,17 +2,22 @@
 
 require '../vendor/autoload.php';
 
+use Dotenv\Dotenv;
 use MscProject\Routing\Router;
 use MscProject\Routing\Orchestrator;
 use MscProject\Middleware\AuthMiddleware;
 use MscProject\Controllers\UserController;
+use MscProject\Models\ErrorResponse;
+
+$dotenv = Dotenv::createImmutable(__DIR__ . '/../');
+$dotenv->load();
 
 // Configuration array
 $config = [
-    'db_host' => 'localhost',
-    'db_name' => 'msc_project',
-    'db_user' => 'root',
-    'db_pass' => 'Dhrup@1289'
+    'db_host' => $_ENV['DB_HOST'],
+    'db_name' => $_ENV['DB_NAME'],
+    'db_user' => $_ENV['DB_USER'],
+    'db_pass' => $_ENV['DB_PASS']
 ];
 
 // Create the Orchestrator with the configuration
@@ -23,8 +28,14 @@ Router::post('#^/login$#', UserController::class, 'login');
 Router::post('#^/logout$#', UserController::class, 'logout', [AuthMiddleware::class]);
 Router::get('#^/authenticate$#', UserController::class, 'authenticate', [AuthMiddleware::class]);
 
-// Dispatch the request (example usage)
-Router::dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
+
+try {
+    // Dispatch the request (example usage)
+    Router::dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
+} catch (\Throwable $e) {
+    $response = new ErrorResponse('Something went wrong', 'Internal Server Error', 500);
+    $response->send();
+}
 
 /*
 GET - The GET method requests a representation of the specified resource. Requests using GET should only retrieve data and should have no other effect on the data.

@@ -38,22 +38,20 @@ class Router
         try {
             $route = self::matchRoute($requestUri, self::$routes[$requestMethod] ?? []);
 
-            if ($route) {
-                // Check for middleware and authenticate if necessary
-                foreach ($route['middleware'] as $middleware) {
-                    if (!Orchestrator::getInstance()->get($middleware)->execute()) {
-                        exit();
-                    }
-                }
-
-                $response = self::handleRequest($route);
-            } else {
-                throw new ErrorException('Route not found', severity: E_USER_ERROR);
+            if (!$route) {
+                throw new \ErrorException('Route not found', 404, E_USER_ERROR);
             }
+
+            // Check for middleware and authenticate if necessary
+            foreach ($route['middleware'] as $middleware) {
+                Orchestrator::getInstance()->get($middleware)->execute();
+            }
+
+            $response = self::handleRequest($route);
         } catch (\ErrorException $e) {
-            $response = new ErrorResponse($e->getMessage(), 'Internal Server Error', headers: ["HTTP/1.0 500 Internal Server Error"]);
+            $response = new ErrorResponse($e->getMessage(), 'Internal Server Error', $e->getCode());
         } catch (\Exception $e) {
-            $response = new ErrorResponse($e->getMessage(), 'Internal Server Error', headers: ["HTTP/1.0 500 Internal Server Error"]);
+            $response = new ErrorResponse('Something went wrong', 'Internal Server Error', 500);
         } finally {
             $response->send();
         }
@@ -78,7 +76,7 @@ class Router
         $instance = Orchestrator::getInstance()->get($route['class']);
 
         if (!$instance or !method_exists($instance, $route['method'])) {
-            throw new ErrorException('Implementation not found', severity: E_USER_ERROR);
+            throw new \ErrorException('Implementation not found', 500, severity: E_USER_ERROR);
         }
 
         return call_user_func_array([$instance, $route['method']], $route['params']);

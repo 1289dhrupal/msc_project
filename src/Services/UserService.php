@@ -23,22 +23,22 @@ class UserService
     public function registerUser(string $name, string $email, string $password): bool
     {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new \ErrorException('Invalid email address', severity: E_USER_WARNING);
+            throw new \ErrorException('Invalid email address', 400, E_USER_WARNING);
         }
 
         if (strlen($password) < 8) {
-            throw new \ErrorException('Password must be at least 8 characters long', severity: E_USER_WARNING);
+            throw new \ErrorException('Password must be at least 8 characters long',  400, E_USER_WARNING);
         }
 
         // name must be alphnumeric and can include spaces and dots and 3 characters long atleast
         if (!preg_match('/^[a-zA-Z0-9 .]{3,}$/', $name)) {
-            throw new \ErrorException('Name must be alphanumeric and can include spaces and dots', severity: E_USER_WARNING);
+            throw new \ErrorException('Name must be alphanumeric and can include spaces and dots',  400, E_USER_WARNING);
         }
 
         $user = $this->userRepository->getUserByEmail($email);
 
         if ($user !== null) {
-            throw new \ErrorException('User already exists', severity: E_USER_WARNING);
+            throw new \ErrorException('User already exists',  409, E_USER_WARNING);
         }
 
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
@@ -49,25 +49,25 @@ class UserService
     public function loginUser(string $email, string $password): ?string
     {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new \ErrorException('Invalid email address', severity: E_USER_WARNING);
+            throw new \ErrorException('Invalid email address',  401, E_USER_WARNING);
         }
 
         if (strlen($password) < 8) {
-            throw new \ErrorException('Password must be at least 8 characters long', severity: E_USER_WARNING);
+            throw new \ErrorException('Password must be at least 8 characters long',  401, E_USER_WARNING);
         }
 
         $user = $this->userRepository->getUserByEmail($email);
 
         if ($user === null || !password_verify($password, $user->password)) {
-            throw new \ErrorException('Incorrect Credentials', severity: E_USER_WARNING);
+            throw new \ErrorException('Incorrect Credentials',  401, E_USER_WARNING);
         }
 
         if ($user->status === 'pending') {
-            throw new \ErrorException('User account is pending email verification', severity: E_USER_WARNING);
+            throw new \ErrorException('User account is pending email verification', 403, E_USER_WARNING);
         }
 
         if ($user->status === 'inactive') {
-            throw new \ErrorException('User account is inactive, please contact the admin', severity: E_USER_WARNING);
+            throw new \ErrorException('User account is inactive, please contact the admin',  403, E_USER_WARNING);
         }
 
         $apiKey = bin2hex(random_bytes(32));
