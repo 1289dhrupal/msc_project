@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 25, 2024 at 08:55 PM
+-- Generation Time: Jul 25, 2024 at 09:33 PM
 -- Server version: 8.0.34
 -- PHP Version: 8.2.12
 
@@ -79,7 +79,9 @@ CREATE TABLE `repositories` (
   `owner` varchar(255) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
   `name` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL,
   `url` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_520_ci
+  `description` text COLLATE utf8mb4_unicode_520_ci,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_fetched_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 -- --------------------------------------------------------
@@ -118,14 +120,14 @@ CREATE TABLE `users` (
 --
 ALTER TABLE `commits`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `repository_id` (`repository_id`);
+  ADD UNIQUE KEY `repo_id_sha` (`repository_id`,`sha`);
 
 --
 -- Indexes for table `commit_details`
 --
 ALTER TABLE `commit_details`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `commit_id` (`commit_id`);
+  ADD UNIQUE KEY `commit_id` (`commit_id`);
 
 --
 -- Indexes for table `git_tokens`
@@ -140,7 +142,7 @@ ALTER TABLE `git_tokens`
 --
 ALTER TABLE `repositories`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `git_token_id` (`git_token_id`);
+  ADD UNIQUE KEY `token_owner_repo` (`git_token_id`,`owner`,`name`);
 
 --
 -- Indexes for table `sessions`
