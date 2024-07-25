@@ -10,9 +10,11 @@ use MscProject\Controllers\UserController;
 use MscProject\Controllers\GitTokenController;
 use MscProject\Services\UserService;
 use MscProject\Services\GitTokenService;
+use MscProject\Services\GitHubService;
 use MscProject\Repositories\UserRepository;
 use MscProject\Repositories\SessionRepository;
 use MscProject\Repositories\GitTokenRepository;
+use MscProject\Repositories\GitRepository;
 use MscProject\Middleware\AuthMiddleware;
 
 class Orchestrator
@@ -93,6 +95,11 @@ class Orchestrator
         return self::get(GitTokenService::class);
     }
 
+    public static function getGitHubService(): UserService
+    {
+        return self::get(GitHubService::class);
+    }
+
     public static function getUserRepository(): UserRepository
     {
         return self::get(UserRepository::class);
@@ -105,6 +112,11 @@ class Orchestrator
     public static function getSessionRepository(): SessionRepository
     {
         return self::get(SessionRepository::class);
+    }
+
+    public static function getGitRepository(): SessionRepository
+    {
+        return self::get(GitRepository::class);
     }
 
     public static function getAuthMiddleware(): AuthMiddleware
