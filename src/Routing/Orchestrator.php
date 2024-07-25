@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace MscProject\Routing;
 
-use MscProject\Database;
 use ReflectionClass;
 use ReflectionException;
 use MscProject\Controllers\UserController;
+use MscProject\Controllers\GitTokenController;
 use MscProject\Services\UserService;
+use MscProject\Services\GitTokenService;
 use MscProject\Repositories\UserRepository;
 use MscProject\Repositories\SessionRepository;
+use MscProject\Repositories\GitTokenRepository;
 use MscProject\Middleware\AuthMiddleware;
 
 class Orchestrator
 {
     private static ?Orchestrator $instance = null;
-    private static array $config;
     private static array $instances = [];
 
     private function __construct()
@@ -25,20 +26,10 @@ class Orchestrator
     }
 
 
-    public static function getInstance(array $config = null): Orchestrator
+    public static function getInstance(): Orchestrator
     {
-
-        if (self::$instance === null && $config === null) {
-            throw new \Exception('Orchestrator not initialized. Call getInstance with configuration first');
-        }
-
-        if (self::$instance !== null && $config !== null) {
-            throw new \Exception('Orchestrator already initialized');
-        }
-
-        if (self::$instance === null && $config !== null) {
+        if (self::$instance === null) {
             self::$instance = new self();
-            self::$config = $config;
         }
 
         return self::$instance;
@@ -51,18 +42,8 @@ class Orchestrator
             return self::$instances[$class];
         }
 
-        // Handle specific cases for Database class
-        if ($class === Database::class) {
-            $instance = new Database(
-                self::$config['db_host'],
-                self::$config['db_name'],
-                self::$config['db_user'],
-                self::$config['db_pass']
-            );
-        } else {
-            // Resolve dependencies recursively
-            $instance = self::resolve($class);
-        }
+        // Resolve dependencies recursively
+        $instance = self::resolve($class);
 
         // Store the instance for future use
         self::$instances[$class] = $instance;
@@ -93,15 +74,14 @@ class Orchestrator
         }
     }
 
-    // Additional convenience methods for common classes
-    public static function getDatabase(): Database
-    {
-        return self::get(Database::class);
-    }
-
     public static function getUserController(): UserController
     {
         return self::get(UserController::class);
+    }
+
+    public static function getGitTokenController(): UserController
+    {
+        return self::get(GitTokenController::class);
     }
 
     public static function getUserService(): UserService
@@ -109,9 +89,18 @@ class Orchestrator
         return self::get(UserService::class);
     }
 
+    public static function getGitTokenService(): UserService
+    {
+        return self::get(GitTokenService::class);
+    }
+
     public static function getUserRepository(): UserRepository
     {
         return self::get(UserRepository::class);
+    }
+    public static function getGitTokenRepository(): UserRepository
+    {
+        return self::get(GitTokenRepository::class);
     }
 
     public static function getSessionRepository(): SessionRepository

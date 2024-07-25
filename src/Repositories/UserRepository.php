@@ -12,9 +12,9 @@ class UserRepository
 {
     private PDO $db;
 
-    public function __construct(Database $db)
+    public function __construct()
     {
-        $this->db = $db->getConnection();
+        $this->db = Database::getInstance()->getConnection();
     }
 
     public function getUserById(int $id): ?User
@@ -54,13 +54,28 @@ class UserRepository
         );
     }
 
-    public function createUser(User $user): bool
+    public function createUser(User $user): int
     {
+        $name = $user->getName();
+        $email = $user->getEmail();
+        $password = $user->getPassword();
+        $status = $user->getStatus();
+
         $stmt = $this->db->prepare("INSERT INTO users (name, email, password, status) VALUES (:name, :email, :password, :status)");
-        $stmt->bindParam(':name', $user->name, PDO::PARAM_STR);
-        $stmt->bindParam(':email', $user->email, PDO::PARAM_STR);
-        $stmt->bindParam(':password', $user->password, PDO::PARAM_STR);
-        $stmt->bindParam(':status', $user->status, PDO::PARAM_STR);
+        $stmt->bindParam(':name', $name, PDO::PARAM_STR);
+        $stmt->bindParam(':email', $email, PDO::PARAM_STR);
+        $stmt->bindParam(':password', $password, PDO::PARAM_STR);
+        $stmt->bindParam(':status', $status, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return intval($this->db->lastInsertId());
+    }
+
+    public function updateUserStatus(int $id, string $status): bool
+    {
+        $stmt = $this->db->prepare("UPDATE users SET status = :status WHERE id = :id");
+        $stmt->bindParam(':status', $status, PDO::PARAM_STR);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
         return $stmt->execute();
     }
 

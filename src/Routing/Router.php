@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace MscProject\Routing;
 
-use ErrorException;
-use Exception;
-use MscProject\Models\ErrorResponse;
-use MscProject\Models\Response;
+use MscProject\Models\Response\ErrorResponse;
+use MscProject\Models\Response\Response;
 
 class Router
 {
@@ -59,6 +57,9 @@ class Router
 
     private static function matchRoute(string $requestUri, array $routes): ?array
     {
+        // Strip query string (?foo=bar) before matching
+        $requestUri = strtok($requestUri, '?');
+
         foreach ($routes as $pattern => $routeInfo) {
             if (preg_match($pattern, $requestUri, $params)) {
                 array_shift($params);

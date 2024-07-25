@@ -9,28 +9,36 @@ use PDOException;
 
 class Database
 {
-    private string $host;
-    private string $dbname;
-    private string $username;
-    private string $password;
+    private static ?Database $instance = null;
+    private PDO $connection;
 
-    public function __construct(string $host, string $dbname, string $username, string $password)
+    private function __construct()
     {
-        $this->host = $host;
-        $this->dbname = $dbname;
-        $this->username = $username;
-        $this->password = $password;
+        $this->configure();
+    }
+
+    public static function getInstance(): Database
+    {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+
+        return self::$instance;
+    }
+
+    private function configure(): void
+    {
+        try {
+            $dsn = "mysql:host={$_ENV['DB_HOST']};dbname={$_ENV['DB_NAME']}";
+            $this->connection = new PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASS']);
+            $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch (PDOException $e) {
+            throw new PDOException("Database connection error: " . $e->getMessage(), 500);
+        }
     }
 
     public function getConnection(): PDO
     {
-        try {
-            $dsn = "mysql:host={$this->host};dbname={$this->dbname}";
-            $connection = new PDO($dsn, $this->username, $this->password);
-            $connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            return $connection;
-        } catch (PDOException $e) {
-            throw new PDOException("Database connection error: " . $e->getMessage());
-        }
+        return $this->connection;
     }
 }

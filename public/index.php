@@ -7,26 +7,20 @@ use MscProject\Routing\Router;
 use MscProject\Routing\Orchestrator;
 use MscProject\Middleware\AuthMiddleware;
 use MscProject\Controllers\UserController;
-use MscProject\Models\ErrorResponse;
+use MscProject\Controllers\GitTokenController;
+use MscProject\Models\Response\ErrorResponse;
 
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->load();
 
-// Configuration array
-$config = [
-    'db_host' => $_ENV['DB_HOST'],
-    'db_name' => $_ENV['DB_NAME'],
-    'db_user' => $_ENV['DB_USER'],
-    'db_pass' => $_ENV['DB_PASS']
-];
-
 // Create the Orchestrator with the configuration
-Orchestrator::getInstance($config);
+Orchestrator::getInstance();
 
 Router::post('#^/register$#', UserController::class, 'register');
+Router::get('#^/verify$#', UserController::class, 'verify');
 Router::post('#^/login$#', UserController::class, 'login');
 Router::post('#^/logout$#', UserController::class, 'logout', [AuthMiddleware::class]);
-Router::get('#^/authenticate$#', UserController::class, 'authenticate', [AuthMiddleware::class]);
+Router::post('#^/git-token/store$#', GitTokenController::class, 'store', [AuthMiddleware::class]);
 
 
 try {

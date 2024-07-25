@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace MscProject\Models;
+namespace MscProject\Models\Response;
 
 class ErrorResponse extends Response
 {

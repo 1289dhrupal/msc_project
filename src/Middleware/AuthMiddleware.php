@@ -36,6 +36,7 @@ class AuthMiddleware
         }
 
         $user = $this->userRepository->getUserById($session->userId);
-        $_SESSION['user'] = $user;
+        global $user_session;
+        $user_session = $user;
     }
 }

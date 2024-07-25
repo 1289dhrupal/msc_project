@@ -13,9 +13,9 @@ class SessionRepository
 {
     private PDO $db;
 
-    public function __construct(Database $db)
+    public function __construct()
     {
-        $this->db = $db->getConnection();
+        $this->db = Database::getInstance()->getConnection();
     }
 
     public function createSession(Session $session): bool
