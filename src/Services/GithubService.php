@@ -13,11 +13,13 @@ class GithubService
     private Client $client;
     private string $username;
     private GitRepository $gitRepository;
+    private GitTokenService $gitTokenService;
 
-    public function __construct(GitRepository $gitRepository)
+    public function __construct(GitTokenService $gitTokenService, GitRepository $gitRepository)
     {
         $this->client = new Client();
         $this->gitRepository = $gitRepository;
+        $this->gitTokenService = $gitTokenService;
     }
 
     public function authenticate(string $githubToken): void
@@ -35,6 +37,14 @@ class GithubService
             echo 'Error: ' . $e->getMessage();
             exit(1);
         }
+    }
+
+    /**
+     * @return GitToken[]
+     */
+    public function fetchGitTokens(): array
+    {
+        return $this->gitTokenService->fetchAll();
     }
 
     public function fetchRepositories(): array

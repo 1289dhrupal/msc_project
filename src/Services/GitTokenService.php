@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace MscProject\Services;
 
-use MscProject\Repositories\GitTokenRepository;
+use MscProject\Repositories\GitRepository;
 use MscProject\Models\GitToken;
 
 class GitTokenService
 {
-    private GitTokenRepository $gitTokenRepository;
+    private GitRepository $gitRepository;
 
-    public function __construct(GitTokenRepository $gitTokenRepository)
+    public function __construct(GitRepository $gitRepository)
     {
-        $this->gitTokenRepository = $gitTokenRepository;
+        $this->gitRepository = $gitRepository;
     }
 
     public function storeGitToken(string $token, string $service): bool
@@ -21,14 +21,14 @@ class GitTokenService
         global $user_session;
         $userId = $user_session->getId();
 
-        $gitToken = $this->gitTokenRepository->getTokenByToken($token);
+        $gitToken = $this->gitRepository->getTokenByToken($token);
 
         if ($token !== null) {
             throw new \ErrorException('Token already exists',  409, E_USER_WARNING);
         }
 
         $gitToken = new GitToken(null, $userId, $token, $service);
-        return $this->gitTokenRepository->create($gitToken);
+        return $this->gitRepository->create($gitToken);
     }
 
     /**
@@ -40,7 +40,7 @@ class GitTokenService
         global $user_session;
         $userId = $user_session->getId();
 
-        return $this->gitTokenRepository->getTokensByUserId($userId);
+        return $this->gitRepository->getTokensByUserId($userId);
     }
 
     /**
@@ -48,6 +48,6 @@ class GitTokenService
      */
     public function fetchAll(): array
     {
-        return $this->gitTokenRepository->fetchAll();
+        return $this->gitRepository->fetchAll();
     }
 }

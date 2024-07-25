@@ -7,22 +7,25 @@ require 'vendor/autoload.php';
 use Dotenv\Dotenv;
 use MscProject\Services\GithubService;
 use MscProject\Routing\Orchestrator;
-use PDO;
 
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../../');
 $dotenv->load();
 
-// GitHub token and database credentials
-$githubToken = "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";
-$gitTokenId = 1;
 
 // Create the Orchestrator with the configuration
 $githubService = Orchestrator::getInstance()->get(GithubService::class);
 
-// Assume you have multiple tokens to process
-$tokens = [$githubToken, /* other tokens */];
+$gitTokens = $githubService->fetchGitTokens();
 
-foreach ($tokens as $token) {
+foreach ($gitTokens as $gitToken) {
+    // GitHub token and database credentials
+    if ($gitToken->getService() !== 'github') {
+        continue;
+    }
+
+    $githubToken = $gitToken->getToken();
+    $gitTokenId = $gitToken->getId();
+
     $githubService->authenticate($token);
     $repositories = $githubService->fetchRepositories();
     $repositoryIds = $githubService->storeRepositories($repositories, $gitTokenId);
