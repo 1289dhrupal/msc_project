@@ -17,15 +17,17 @@ class GitTokenRepository
         $this->db = Database::getInstance()->getConnection();
     }
 
-    public function getToken(string $token): ?GitToken
+    public function getTokenByToken(string $token): ?GitToken
     {
         $stmt = $this->db->prepare("SELECT * FROM git_tokens WHERE token = :token");
         $stmt->bindParam(':token', $token);
         $stmt->execute();
         $result = $stmt->fetch();
+
         if (!$result) {
             return null;
         }
+
         return new GitToken($result['id'], $result['user_id'], $result['token'], $result['service']);
     }
 
@@ -39,6 +41,43 @@ class GitTokenRepository
         $stmt->bindParam(':token', $token);
         $stmt->bindParam(':service', $service);
         return $stmt->execute();
+    }
+
+    /**
+     * @param int $userId
+     * @return GitToken[]
+     */
+    public function getTokensByUserId(int $userId): array
+    {
+        $stmt = $this->db->prepare("SELECT * FROM git_tokens WHERE user_id = :user_id");
+        $stmt->bindParam(':user_id', $userId);
+        $stmt->execute();
+        $results = $stmt->fetchAll();
+
+        $tokens = [];
+        foreach ($results as $result) {
+            $tokens[] = new GitToken($result['id'], $result['user_id'], $result['token'], $result['service']);
+        }
+
+        return $tokens;
+    }
+
+    /**
+     * @param int $userId
+     * @return GitToken[]
+     */
+    public function fetchAll(): array
+    {
+        $stmt = $this->db->prepare("SELECT * FROM git_tokens");
+        $stmt->execute();
+        $results = $stmt->fetchAll();
+
+        $tokens = [];
+        foreach ($results as $result) {
+            $tokens[] = new GitToken($result['id'], $result['user_id'], $result['token'], $result['service']);
+        }
+
+        return $tokens;
     }
 
     // Additional methods for fetching and updating Git tokens can be added here

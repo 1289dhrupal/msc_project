@@ -25,7 +25,6 @@ class Orchestrator
         // Private constructor to prevent instantiation
     }
 
-
     public static function getInstance(): Orchestrator
     {
         if (self::$instance === null) {

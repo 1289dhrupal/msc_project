@@ -22,7 +22,6 @@ Router::post('#^/login$#', UserController::class, 'login');
 Router::post('#^/logout$#', UserController::class, 'logout', [AuthMiddleware::class]);
 Router::post('#^/git-token/store$#', GitTokenController::class, 'store', [AuthMiddleware::class]);
 
-
 try {
     // Dispatch the request (example usage)
     Router::dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
