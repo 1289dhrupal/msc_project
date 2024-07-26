@@ -26,7 +26,7 @@ foreach ($gitTokens as $gitToken) {
     $githubToken = $gitToken->getToken();
     $gitTokenId = $gitToken->getId();
 
-    $githubService->authenticate($token);
+    $githubService->authenticate($githubToken);
     $repositories = $githubService->fetchRepositories();
     $repositoryIds = $githubService->storeRepositories($repositories, $gitTokenId);
 
@@ -44,4 +44,6 @@ foreach ($gitTokens as $gitToken) {
         // Update the last fetched at timestamp for the repository
         $githubService->updateRepositoryFetchedAt($repositoryId);
     }
+    // Update the last fetched at timestamp for the repository
+    $githubService->updateRepositoryFetchedAt($gitTokenId);
 }
