@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace MscProject\Services;
 
 require 'vendor/autoload.php';
@@ -64,7 +66,7 @@ class GithubService
         foreach ($repositories as $repo) {
             try {
                 $repositoryId = $this->gitRepository->storeRepository($gitTokenId, $repo['name'], $repo['html_url'], $repo['description'] ?? 'No description', $repo['owner']['login']);
-                $repositoryIds[$repo['name']] = $repositoryId;
+                $repositoryIds[$repositoryId] = $repo['name'];
             } catch (\Exception $e) {
                 echo 'Error: ' . $e->getMessage();
             }
@@ -90,7 +92,7 @@ class GithubService
         foreach ($commits as $commit) {
             try {
                 $commitId = $this->gitRepository->storeCommit($repositoryId, $commit['sha'], $commit['commit']['author']['name'], $commit['commit']['message'], $commit['commit']['author']['date']);
-                $commitIds[$commit['sha']] = $commitId;
+                $commitIds[$commitId] = $commit['sha'];
             } catch (\Exception $e) {
                 echo 'Error: ' . $e->getMessage();
             }

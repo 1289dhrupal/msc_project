@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace MscProject\Repositories;
 
 use MscProject\Database;
@@ -7,6 +9,7 @@ use MscProject\Models\GitToken;
 use MscProject\Models\Repository;
 use MscProject\Models\Commit;
 use MscProject\Models\CommitDetail;
+use MscProject\Models\CommitAnalysis;
 use PDO;
 
 class GitRepository
@@ -82,6 +85,26 @@ class GitRepository
     {
         $stmt = $this->db->prepare("SELECT * FROM commits WHERE repository_id = :repository_id AND sha = :sha");
         $stmt->execute([':repository_id' => $repositoryId, ':sha' => $sha]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($result) {
+            return new Commit(
+                (int) $result['id'],
+                (int) $result['repository_id'],
+                $result['sha'],
+                $result['author'],
+                $result['message'],
+                $result['date']
+            );
+        }
+
+        return null;
+    }
+
+    public function getCommitById(int $commitId): ?Commit
+    {
+        $stmt = $this->db->prepare("SELECT * FROM commits WHERE id = :commit_id");
+        $stmt->execute([':commit_id' => $commitId]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($result) {
@@ -205,5 +228,26 @@ class GitRepository
         }
 
         return $tokens;
+    }
+
+    public function storeCommitAnalysis(CommitAnalysis $result): void
+    {
+        $stmt = $this->db->prepare("INSERT INTO commit_analysis (commit_id, quality, commit_type) VALUES (:commit_id, :quality, :commit_type)");
+        $stmt->execute([
+            ':commit_id' => $result->getCommitId(),
+            ':quality' => $result->getQuality(),
+            ':commit_type' => $result->getCommitType()
+        ]);
+    }
+
+    public function getAllCommitsWithDetails(): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT c.id, c.message, cd.files AS diffs
+            FROM commits c
+            JOIN commit_details cd ON c.id = cd.commit_id
+        ");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }
