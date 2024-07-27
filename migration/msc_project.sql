@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 25, 2024 at 09:33 PM
+-- Generation Time: Jul 27, 2024 at 10:45 PM
 -- Server version: 8.0.34
 -- PHP Version: 8.2.12
 
@@ -33,23 +33,25 @@ CREATE TABLE `commits` (
   `sha` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL,
   `author` varchar(255) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
   `message` text COLLATE utf8mb4_unicode_520_ci,
-  `date` datetime DEFAULT NULL
+  `date` datetime DEFAULT NULL,
+  `additions` int DEFAULT NULL,
+  `deletions` int DEFAULT NULL,
+  `total` int DEFAULT NULL,
+  `files` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `commit_details`
+-- Table structure for table `commit_analysis`
 --
 
-CREATE TABLE `commit_details` (
+CREATE TABLE `commit_analysis` (
   `id` int NOT NULL,
   `commit_id` int NOT NULL,
-  `author` varchar(255) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
-  `additions` int DEFAULT NULL,
-  `deletions` int DEFAULT NULL,
-  `total` int DEFAULT NULL,
-  `files` json DEFAULT NULL
+  `quality` int DEFAULT NULL,
+  `commit_type` varchar(50) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 -- --------------------------------------------------------
@@ -120,14 +122,14 @@ CREATE TABLE `users` (
 --
 ALTER TABLE `commits`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `repo_id_sha` (`repository_id`,`sha`);
+  ADD UNIQUE KEY `repository_id` (`repository_id`,`sha`);
 
 --
--- Indexes for table `commit_details`
+-- Indexes for table `commit_analysis`
 --
-ALTER TABLE `commit_details`
+ALTER TABLE `commit_analysis`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `commit_id` (`commit_id`);
+  ADD KEY `commit_id` (`commit_id`);
 
 --
 -- Indexes for table `git_tokens`
@@ -168,9 +170,9 @@ ALTER TABLE `commits`
   MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `commit_details`
+-- AUTO_INCREMENT for table `commit_analysis`
 --
-ALTER TABLE `commit_details`
+ALTER TABLE `commit_analysis`
   MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
 --
@@ -202,10 +204,10 @@ ALTER TABLE `commits`
   ADD CONSTRAINT `commits_ibfk_1` FOREIGN KEY (`repository_id`) REFERENCES `repositories` (`id`);
 
 --
--- Constraints for table `commit_details`
+-- Constraints for table `commit_analysis`
 --
-ALTER TABLE `commit_details`
-  ADD CONSTRAINT `commit_details_ibfk_1` FOREIGN KEY (`commit_id`) REFERENCES `commits` (`id`);
+ALTER TABLE `commit_analysis`
+  ADD CONSTRAINT `commit_analysis_ibfk_1` FOREIGN KEY (`commit_id`) REFERENCES `commits` (`id`);
 
 --
 -- Constraints for table `git_tokens`
