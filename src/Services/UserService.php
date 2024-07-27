@@ -103,19 +103,17 @@ class UserService
 
     private function sendVerificationEmail(User $user): void
     {
-        $mailer = Mailer::getInstance()->getMailer();
+        $mailer = Mailer::getInstance();
         try {
-            // Recipients
-            $mailer->addAddress($user->getEmail(), $user->getName());
+            // Email details
+            $to = $user->getEmail();
+            $subject = 'Email Verification';
+            $body = $this->getVerificationEmailBody($user->getEmail(), password_hash($user->getId() . $user->getEmail(), PASSWORD_BCRYPT));
 
-            // Content
-            $mailer->isHTML(true);
-            $mailer->Subject = 'Email Verification';
-            $mailer->Body = $this->getVerificationEmailBody($user->getEmail(), password_hash($user->getId() . $user->getEmail(), PASSWORD_BCRYPT));
-
-            $mailer->send();
-        } catch (MailException $e) {
-            throw new \Exception('Verification email could not be sent. Mailer Error: ' . $mailer->ErrorInfo, 500);
+            // Send email
+            $mailer->sendEmail($to, $subject, $body);
+        } catch (\Exception $e) {
+            throw new \Exception('Verification email could not be sent. Error: ' . $e->getMessage(), 500);
         }
     }
 

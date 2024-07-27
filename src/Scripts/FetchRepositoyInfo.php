@@ -10,11 +10,9 @@ use Dotenv\Dotenv;
 use MscProject\Services\GithubService;
 use MscProject\Services\GitAnalysisService;
 use MscProject\Routing\Orchestrator;
-use PDO;
 
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../../');
 $dotenv->load();
-
 
 // Create the Orchestrator with the configuration
 $githubService = Orchestrator::getInstance()->get(GithubService::class);
@@ -33,22 +31,20 @@ foreach ($gitTokens as $gitToken) {
 
     $githubService->authenticate($githubToken);
     $repositories = $githubService->fetchRepositories();
-    $repositoryIds = $githubService->storeRepositories($repositories, $gitTokenId);
 
-    // Fetch and store commits for each repository
-    foreach ($repositoryIds as  $repositoryId => $repoName) {
-        $commits = $githubService->fetchCommits($repoName);
-        $commitIds = $githubService->storeCommits($commits, $repositoryId);
+    foreach ($repositories as $repository) {
 
-        // Fetch and store commit details for each commit
-        foreach ($commitIds as $commitId => $sha) {
-            $commitDetails = $githubService->fetchCommitDetails($sha, $repoName);
-            $githubService->storeCommitDetails($commitDetails, $commitId);
+        $repositoryId = $githubService->storeRepository($repository, $gitTokenId);
+        $commits = $githubService->fetchCommits($repository['name']);
 
-            $gitAnalysisService->analyzeCommit($commitId);
+        foreach ($commits as $commit) {
+            $commitDetails = $githubService->fetchCommitDetails($commit['sha'], $repository['name']);
+            $commitId = $githubService->storeCommit($commit, $repositoryId, $commitDetails);
+
+            $commitAnalysis = $gitAnalysisService->analyzeCommit($commitId);
+            $gitAnalysisService->storeCommitAnalysis($commitAnalysis);
         }
 
-        // Update the last fetched at timestamp for the repository
         $githubService->updateRepositoryFetchedAt($repositoryId);
     }
 }

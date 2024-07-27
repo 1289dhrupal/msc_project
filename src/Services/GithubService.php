@@ -59,20 +59,14 @@ class GithubService
         }
     }
 
-    public function storeRepositories(array $repositories, int $gitTokenId): array
+    public function storeRepository(array $repository, int $gitTokenId): int
     {
-        $repositoryIds = [];
-
-        foreach ($repositories as $repo) {
-            try {
-                $repositoryId = $this->gitRepository->storeRepository($gitTokenId, $repo['name'], $repo['html_url'], $repo['description'] ?? 'No description', $repo['owner']['login']);
-                $repositoryIds[$repositoryId] = $repo['name'];
-            } catch (\Exception $e) {
-                echo 'Error: ' . $e->getMessage();
-            }
+        try {
+            $repositoryId = $this->gitRepository->storeRepository($gitTokenId, $repository['name'], $repository['html_url'], $repository['description'] ?? 'No description', $repository['owner']['login']);
+            return $repositoryId;
+        } catch (\Exception $e) {
+            echo 'Error: ' . $e->getMessage();
         }
-
-        return $repositoryIds;
     }
 
     public function fetchCommits(string $repoName): array
@@ -85,20 +79,27 @@ class GithubService
         }
     }
 
-    public function storeCommits(array $commits, int $repositoryId): array
+    public function storeCommit(array $commit, int $repositoryId, array $commitDetails): int
     {
-        $commitIds = [];
+        try {
 
-        foreach ($commits as $commit) {
-            try {
-                $commitId = $this->gitRepository->storeCommit($repositoryId, $commit['sha'], $commit['commit']['author']['name'], $commit['commit']['message'], $commit['commit']['author']['date']);
-                $commitIds[$commitId] = $commit['sha'];
-            } catch (\Exception $e) {
-                echo 'Error: ' . $e->getMessage();
-            }
+            // Store commit with detailed information
+            $commitId = $this->gitRepository->storeCommit(
+                $repositoryId,
+                $commit['sha'],
+                $commit['commit']['author']['name'],
+                $commit['commit']['message'],
+                $commit['commit']['author']['date'],
+                $commitDetails['stats']['additions'],
+                $commitDetails['stats']['deletions'],
+                $commitDetails['stats']['total'],
+                json_encode($commitDetails['files'])
+            );
+
+            return $commitId;
+        } catch (\Exception $e) {
+            echo 'Error: ' . $e->getMessage();
         }
-
-        return $commitIds;
     }
 
     public function fetchCommitDetails(string $sha, string $repoName): array
@@ -108,15 +109,6 @@ class GithubService
         } catch (\Exception $e) {
             echo 'Error: ' . $e->getMessage();
             return [];
-        }
-    }
-
-    public function storeCommitDetails(array $commitDetails, int $commitId): void
-    {
-        try {
-            $this->gitRepository->storeCommitDetails($commitId, $commitDetails['commit']['author']['name'], $commitDetails['stats']['additions'], $commitDetails['stats']['deletions'], $commitDetails['stats']['total'], json_encode($commitDetails['files']));
-        } catch (\Exception $e) {
-            echo 'Error: ' . $e->getMessage();
         }
     }
 

@@ -51,6 +51,7 @@ class GitAnalysisService
         // Total score is a combination of message quality and changes score
         return min(100, (int) ($messageQuality + $changesScore));
     }
+
     private function classifyCommitType(string $message, array $diffs): string
     {
         if (stripos($message, 'bug fix') !== false) {
@@ -64,22 +65,26 @@ class GitAnalysisService
         return $majorChange ? 'Major Change' : 'Minor or Cosmetic Change';
     }
 
-    public function analyzeCommit(int $commitId): void
+    public function analyzeCommit(int $commitId): CommitAnalysis
     {
-        $commitDetials = $this->gitRepository->getCommitDetails($commitId);
         $commit = $this->gitRepository->getCommitById($commitId);
 
-        $diffs = json_decode($commitDetials->getFiles(), true); // Decode the JSON string into an array
+        $diffs = json_decode($commit->getFiles(), true); // Decode the JSON string into an array
         $quality = $this->calculateCommitQuality($commit->getMessage(), $diffs);
         $commitType = $this->classifyCommitType($commit->getMessage(), $diffs);
 
-        $CommitAnalysis = new CommitAnalysis(
+        $commitAnalysis = new CommitAnalysis(
             $commitId,
             $quality,
             $commitType
         );
 
+        return $commitAnalysis;
+    }
+
+    public function storeCommitAnalysis(CommitAnalysis $commitAnalysis): void
+    {
         // Store the analysis result in the database
-        $this->gitRepository->storeCommitAnalysis($CommitAnalysis);
+        $this->gitRepository->storeCommitAnalysis($commitAnalysis);
     }
 }

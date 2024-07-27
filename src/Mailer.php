@@ -43,8 +43,28 @@ class Mailer
         }
     }
 
-    public function getMailer(): PHPMailer
+    public function sendEmail(string $to, string $subject, string $body, array $attachments = []): void
     {
-        return $this->mail;
+        try {
+            // Recipients
+            $this->mail->clearAddresses();
+            $this->mail->addAddress($to);
+
+            // Attachments
+            foreach ($attachments as $attachment) {
+                $this->mail->addAttachment($attachment);
+            }
+
+            // Content
+            $this->mail->isHTML(true);
+            $this->mail->Subject = $subject;
+            $this->mail->Body = $body;
+
+            $this->mail->send();
+
+            echo "Email has been sent to {$to}.";
+        } catch (MailException $e) {
+            echo "Email could not be sent to {$to}. Mailer Error: {$this->mail->ErrorInfo}";
+        }
     }
 }
