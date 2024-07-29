@@ -20,11 +20,6 @@ class GitRepository
 
     public function storeRepository(int $gitTokenId, string $name, string $url, ?string $description, string $owner): int
     {
-        $repository = $this->getRepository($gitTokenId, $owner, $name);
-        if ($repository) {
-            return $repository->getId();
-        }
-
         $stmt = $this->db->prepare("INSERT INTO repositories (git_token_id, name, url, description, owner) VALUES (:git_token_id, :name, :url, :description, :owner)");
         $stmt->bindParam(':git_token_id', $gitTokenId, PDO::PARAM_INT);
         $stmt->bindParam(':name', $name, PDO::PARAM_STR);
@@ -72,11 +67,6 @@ class GitRepository
         int $total,
         string $files
     ): int {
-        $commit = $this->getCommit($repositoryId, $sha);
-        if ($commit) {
-            return $commit->getId();
-        }
-
         $stmt = $this->db->prepare("INSERT INTO commits (repository_id, sha, author, message, date, additions, deletions, total, files) VALUES (:repository_id, :sha, :author, :message, :date, :additions, :deletions, :total, :files)");
         $stmt->bindParam(':repository_id', $repositoryId, PDO::PARAM_INT);
         $stmt->bindParam(':sha', $sha, PDO::PARAM_STR);
@@ -213,10 +203,14 @@ class GitRepository
 
     public function storeCommitAnalysis(CommitAnalysis $result): void
     {
+        $commitId = $result->getCommitId();
+        $quality = $result->getQuality();
+        $commitType = $result->getCommitType();
+
         $stmt = $this->db->prepare("INSERT INTO commit_analysis (commit_id, quality, commit_type) VALUES (:commit_id, :quality, :commit_type)");
-        $stmt->bindParam(':commit_id', $result->getCommitId(), PDO::PARAM_INT);
-        $stmt->bindParam(':quality', $result->getQuality(), PDO::PARAM_INT);
-        $stmt->bindParam(':commit_type', $result->getCommitType(), PDO::PARAM_STR);
+        $stmt->bindParam(':commit_id', $commitId, PDO::PARAM_INT);
+        $stmt->bindParam(':quality', $quality, PDO::PARAM_INT);
+        $stmt->bindParam(':commit_type', $commitType, PDO::PARAM_STR);
         $stmt->execute();
     }
 

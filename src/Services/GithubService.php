@@ -9,6 +9,8 @@ require 'vendor/autoload.php';
 use Github\Client;
 use Github\AuthMethod;
 use MscProject\Repositories\GitRepository;
+use MscProject\Models\Repository;
+use MscProject\Models\Commit;
 
 class GithubService
 {
@@ -59,6 +61,11 @@ class GithubService
         }
     }
 
+    public function getRepository(int $gitTokenId, string $owner, string $name): ?Repository
+    {
+        return $this->gitRepository->getRepository($gitTokenId, $owner, $name);
+    }
+
     public function storeRepository(array $repository, int $gitTokenId): int
     {
         try {
@@ -79,6 +86,11 @@ class GithubService
         }
     }
 
+    public function getCommit(int $repositoryId, string $sha): ?Commit
+    {
+        return $this->gitRepository->getCommit($repositoryId, $sha);
+    }
+
     public function storeCommit(array $commit, int $repositoryId, array $commitDetails): int
     {
         try {
@@ -87,7 +99,7 @@ class GithubService
             $commitId = $this->gitRepository->storeCommit(
                 $repositoryId,
                 $commit['sha'],
-                $commit['commit']['author']['name'],
+                $commit['author']['login'] ?? $commit['commit']['author']['email'],
                 $commit['commit']['message'],
                 $commit['commit']['author']['date'],
                 $commitDetails['stats']['additions'],
