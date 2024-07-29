@@ -11,27 +11,18 @@
                         "type": "object",
                         "description": "Details about the commit including the commit message, the number of lines added and deleted, the total number of lines changed, and specific details about each file that was changed.",
                         "properties": {
-                            "message": {
-                                "type": "string",
-                                "description": "The commit message that describes the changes made in this commit. The quality of the message is evaluated based on clarity and descriptiveness."
-                            },
                             "commit_message_quality_score": {
                                 "type": "integer",
                                 "description": "The quality score of the commit message based on its clarity, descriptiveness, and how well it reflects the changes made in the commit. Scores range from 1 to 10, with higher scores indicating better quality.",
                                 "minimum": 1,
                                 "maximum": 10
+                                
                             },
-                            "additions": {
+                            "commit_changes_quality_score": {
                                 "type": "integer",
-                                "description": "The total number of lines added in the commit. This metric helps to understand the extent of new code introduced."
-                            },
-                            "deletions": {
-                                "type": "integer",
-                                "description": "The total number of lines deleted in the commit. This metric indicates the extent of code removal or refactoring."
-                            },
-                            "total": {
-                                "type": "integer",
-                                "description": "The total number of lines changed in the commit, calculated as the sum of additions and deletions. This gives an overall picture of the commit's impact."
+                                "description": "The overall quality score of the commit based on the changes made, including the number of lines added and deleted, the total number of lines changed, and the quality scores of individual file changes. Scores range from 1 to 100, with higher scores indicating better quality.",
+                                "minimum": 1,
+                                "maximum": 100
                             },
                             "files": {
                                 "type": "array",
@@ -39,9 +30,9 @@
                                 "items": {
                                     "type": "object",
                                     "properties": {
-                                        "filename": {
+                                        "sha": {
                                             "type": "string",
-                                            "description": "The name of the file that was changed. This is used to identify the file in the project."
+                                            "description": "The sha of the file that was changed. This is used to identify the file in the project."
                                         },
                                         "status": {
                                             "type": "string",
@@ -76,7 +67,7 @@
                                         }
                                     },
                                     "required": [
-                                        "filename",
+                                        "sha",
                                         "status",
                                         "modification_type",
                                         "quality_score"
@@ -85,11 +76,8 @@
                             }
                         },
                         "required": [
-                            "message",
-                            "additions",
-                            "deletions",
-                            "total",
                             "files",
+                            "commit_changes_quality_score",
                             "commit_message_quality_score"
                         ]
                     }
