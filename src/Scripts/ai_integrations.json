@@ -1,0 +1,103 @@
+[
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_commit_quality",
+            "description": "Calculates and returns the quality score of the commit along with details about the files changed.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "commit_details": {
+                        "type": "object",
+                        "description": "Details about the commit including the commit message, the number of lines added and deleted, the total number of lines changed, and specific details about each file that was changed.",
+                        "properties": {
+                            "message": {
+                                "type": "string",
+                                "description": "The commit message that describes the changes made in this commit. The quality of the message is evaluated based on clarity and descriptiveness."
+                            },
+                            "commit_message_quality_score": {
+                                "type": "integer",
+                                "description": "The quality score of the commit message based on its clarity, descriptiveness, and how well it reflects the changes made in the commit. Scores range from 1 to 10, with higher scores indicating better quality.",
+                                "minimum": 1,
+                                "maximum": 10
+                            },
+                            "additions": {
+                                "type": "integer",
+                                "description": "The total number of lines added in the commit. This metric helps to understand the extent of new code introduced."
+                            },
+                            "deletions": {
+                                "type": "integer",
+                                "description": "The total number of lines deleted in the commit. This metric indicates the extent of code removal or refactoring."
+                            },
+                            "total": {
+                                "type": "integer",
+                                "description": "The total number of lines changed in the commit, calculated as the sum of additions and deletions. This gives an overall picture of the commit's impact."
+                            },
+                            "files": {
+                                "type": "array",
+                                "description": "A list of objects, each representing a file that was changed in the commit. Details include the file name, the type of change, the specific modification type, and the quality score assigned based on the type of modification.",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "filename": {
+                                            "type": "string",
+                                            "description": "The name of the file that was changed. This is used to identify the file in the project."
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "description": "The status of the file change, indicating whether the file was added, modified, removed, or renamed. This helps categorize the type of change.",
+                                            "enum": [
+                                                "added",
+                                                "modified",
+                                                "removed",
+                                                "renamed"
+                                            ]
+                                        },
+                                        "modification_type": {
+                                            "type": [
+                                                "null",
+                                                "string"
+                                            ],
+                                            "description": "The specific type of modification made to the file, if applicable. Possible values include: 'added_code' for new code (high score), 'updated_code' for significant updates (high score), 'renamed_elements' for renaming variables or classes (low score), 'whitespace_changes' for formatting or whitespace modifications (very low score), 'changed_operators' for changes in code operators (low score).",
+                                            "enum": [
+                                                null,
+                                                "added_code",
+                                                "updated_code",
+                                                "renamed_elements",
+                                                "whitespace_changes",
+                                                "changed_operators"
+                                            ]
+                                        },
+                                        "quality_score": {
+                                            "type": "integer",
+                                            "description": "The quality score of the file change based on the modification type.",
+                                            "minimum": 1,
+                                            "maximum": 10
+                                        }
+                                    },
+                                    "required": [
+                                        "filename",
+                                        "status",
+                                        "modification_type",
+                                        "quality_score"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "message",
+                            "additions",
+                            "deletions",
+                            "total",
+                            "files",
+                            "commit_message_quality_score"
+                        ]
+                    }
+                },
+                "required": [
+                    "commit_details"
+                ]
+            }
+        }
+    }
+]
