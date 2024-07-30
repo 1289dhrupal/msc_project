@@ -206,11 +206,13 @@ class GitRepository
         $commitId = $result->getCommitId();
         $quality = $result->getQuality();
         $commitType = $result->getCommitType();
+        $files = $result->getFiles();
 
-        $stmt = $this->db->prepare("INSERT INTO commit_analysis (commit_id, quality, commit_type) VALUES (:commit_id, :quality, :commit_type)");
+        $stmt = $this->db->prepare("INSERT INTO commit_analysis (commit_id, quality, commit_type, files) VALUES (:commit_id, :quality, :commit_type, :files)");
         $stmt->bindParam(':commit_id', $commitId, PDO::PARAM_INT);
         $stmt->bindParam(':quality', $quality, PDO::PARAM_INT);
         $stmt->bindParam(':commit_type', $commitType, PDO::PARAM_STR);
+        $stmt->bindParam(':files', $files, PDO::PARAM_STR);
         $stmt->execute();
     }
 

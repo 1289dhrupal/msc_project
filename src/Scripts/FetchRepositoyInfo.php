@@ -9,7 +9,6 @@ require 'vendor/autoload.php';
 use Dotenv\Dotenv;
 use MscProject\Services\GithubService;
 use MscProject\Services\GitAnalysisService;
-use MscProject\Services\AiIntegrationService;
 use MscProject\Routing\Orchestrator;
 
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../../');
@@ -18,7 +17,6 @@ $dotenv->load();
 // Create the Orchestrator with the configuration
 $githubService = Orchestrator::getInstance()->get(GithubService::class);
 $gitAnalysisService = Orchestrator::getInstance()->get(GitAnalysisService::class);
-$aiIntegrationService = Orchestrator::getInstance()->get(AiIntegrationService::class);
 
 $gitTokens = $githubService->fetchGitTokens();
 
@@ -44,8 +42,8 @@ foreach ($gitTokens as $gitToken) {
         foreach ($commits as $commit) {
             $commitDetails = $githubService->fetchCommitDetails($commit['sha'], $repository['name']);
             if (!$githubService->getCommit($repositoryId, $commit['sha'])) {
-                $commitId = $githubService->storeCommit($commit, $repositoryId, $commitDetails);
-                $commitAnalysis = $gitAnalysisService->analyzeCommit($commitId);
+                $commitId = $githubService->storeCommit($commit, $commitDetails, $repositoryId);
+                $commitAnalysis = $gitAnalysisService->analyzeCommit($commitId, $commitDetails);
                 $gitAnalysisService->storeCommitAnalysis($commitAnalysis);
                 $update = true;
             }
@@ -56,12 +54,3 @@ foreach ($gitTokens as $gitToken) {
         }
     }
 }
-
-
-// Read commit details from sample_input.json
-$commit_details_json = file_get_contents(__DIR__ . '/sample_input.json');
-$commit_details = json_decode($commit_details_json, true);
-
-// Generate AI report
-$response = $aiIntegrationService->generateAiReport($commit_details);
-print_r($response);

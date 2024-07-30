@@ -91,7 +91,7 @@ class GithubService
         return $this->gitRepository->getCommit($repositoryId, $sha);
     }
 
-    public function storeCommit(array $commit, int $repositoryId, array $commitDetails): int
+    public function storeCommit(array $commit, array $commitDetails, int $repositoryId): int
     {
         try {
 
