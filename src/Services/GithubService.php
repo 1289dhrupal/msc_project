@@ -38,7 +38,7 @@ class GithubService
             $user = $this->client->currentUser()->show();
             return $user['login'];
         } catch (\Exception $e) {
-            echo 'Error: ' . $e->getMessage();
+            // echo 'Error: ' . $e->getMessage();
             exit(1);
         }
     }
@@ -56,7 +56,7 @@ class GithubService
         try {
             return $this->client->user()->repositories($this->username);
         } catch (\Exception $e) {
-            echo 'Error: ' . $e->getMessage();
+            // echo 'Error: ' . $e->getMessage();
             return [];
         }
     }
@@ -72,7 +72,7 @@ class GithubService
             $repositoryId = $this->gitRepository->storeRepository($gitTokenId, $repository['name'], $repository['html_url'], $repository['description'] ?? 'No description', $repository['owner']['login']);
             return $repositoryId;
         } catch (\Exception $e) {
-            echo 'Error: ' . $e->getMessage();
+            // echo 'Error: ' . $e->getMessage();
         }
     }
 
@@ -81,7 +81,7 @@ class GithubService
         try {
             return $this->client->repo()->commits()->all($this->username, $repoName, []);
         } catch (\Exception $e) {
-            echo 'Error: ' . $e->getMessage();
+            // echo 'Error: ' . $e->getMessage();
             return [];
         }
     }
@@ -110,7 +110,7 @@ class GithubService
 
             return $commitId;
         } catch (\Exception $e) {
-            echo 'Error: ' . $e->getMessage();
+            // echo 'Error: ' . $e->getMessage();
         }
     }
 
@@ -119,7 +119,7 @@ class GithubService
         try {
             return $this->client->repo()->commits()->show($this->username, $repoName, $sha);
         } catch (\Exception $e) {
-            echo 'Error: ' . $e->getMessage();
+            // echo 'Error: ' . $e->getMessage();
             return [];
         }
     }

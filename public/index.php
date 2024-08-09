@@ -13,6 +13,15 @@ use MscProject\Models\Response\ErrorResponse;
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->load();
 
+// Allow from any origin
+header("Access-Control-Allow-Origin: *");
+
+// Allow specific HTTP methods (e.g., POST)
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+
+// Allow specific headers
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
 // Create the Orchestrator with the configuration
 Orchestrator::getInstance();
 

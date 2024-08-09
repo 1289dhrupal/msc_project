@@ -19,7 +19,7 @@ class UserController
 
     public function register(): Response
     {
-        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $input = $_POST;
         $input = array_merge(array('name' => '', 'email' => '', 'password' => ''), $input);
 
         // name must be alphnumeric and can include spaces and dots and 3 characters long atleast
@@ -37,7 +37,7 @@ class UserController
 
         $this->service->registerUser($input['name'], $input['email'], $input['password']);
 
-        return new SuccessResponse('User registration successful');
+        return new SuccessResponse('Please check your email to verify your account before logging in.');
     }
 
     public function verify(): Response
@@ -54,7 +54,7 @@ class UserController
 
     public function login(): Response
     {
-        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $input = $_POST ?: [];
         $input = array_merge(array('email' => '', 'password' => ''), $input);
 
         if (!filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {

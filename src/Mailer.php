@@ -62,9 +62,9 @@ class Mailer
 
             $this->mail->send();
 
-            echo "Email has been sent to {$to}.";
+            // echo "Email has been sent to {$to}.";
         } catch (MailException $e) {
-            echo "Email could not be sent to {$to}. Mailer Error: {$this->mail->ErrorInfo}";
+            // echo "Email could not be sent to {$to}. Mailer Error: {$this->mail->ErrorInfo}";
         }
     }
 }
