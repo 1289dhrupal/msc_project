@@ -151,15 +151,18 @@ class GitRepository
             return null;
         }
 
-        return new GitToken($result['id'], $result['user_id'], $result['token'], $result['service']);
+        return new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['is_disabled'], $result['created_at'], $result['last_fetched_at']);
     }
 
     public function create(GitToken $gitToken): bool
     {
+        $userID = $gitToken->getUserId();
+        $token = $gitToken->getToken();
+        $service = $gitToken->getService();
         $stmt = $this->db->prepare("INSERT INTO git_tokens (user_id, token, service) VALUES (:user_id, :token, :service)");
-        $stmt->bindParam(':user_id', $gitToken->getUserId(), PDO::PARAM_INT);
-        $stmt->bindParam(':token', $gitToken->getToken(), PDO::PARAM_STR);
-        $stmt->bindParam(':service', $gitToken->getService(), PDO::PARAM_STR);
+        $stmt->bindParam(':user_id', $userID, PDO::PARAM_INT);
+        $stmt->bindParam(':token', $token, PDO::PARAM_STR);
+        $stmt->bindParam(':service', $service, PDO::PARAM_STR);
         $stmt->execute();
 
         return $stmt->rowCount() > 0;
@@ -178,7 +181,7 @@ class GitRepository
 
         $tokens = [];
         foreach ($results as $result) {
-            $tokens[] = new GitToken($result['id'], $result['user_id'], $result['token'], $result['service']);
+            $tokens[] = new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['is_disabled'], $result['created_at'], $result['last_fetched_at']);
         }
 
         return $tokens;
@@ -187,15 +190,22 @@ class GitRepository
     /**
      * @return GitToken[]
      */
-    public function fetchAll(): array
+    public function list(int $userId = 0): array
     {
-        $stmt = $this->db->prepare("SELECT * FROM git_tokens");
+        $sql = "SELECT * FROM git_tokens";
+        if ($userId == 0) {
+            $sql .= " WHERE user_id = :user_id";
+        }
+        $stmt = $this->db->prepare($sql);
+        if ($userId == 0) {
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        }
         $stmt->execute();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $tokens = [];
         foreach ($results as $result) {
-            $tokens[] = new GitToken($result['id'], $result['user_id'], $result['token'], $result['service']);
+            $tokens[] = new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['is_disabled'], $result['created_at'], $result['last_fetched_at']);
         }
 
         return $tokens;
@@ -224,5 +234,36 @@ class GitRepository
         ");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function toggleToken(int $tokenId, bool $isDisabled, int $userId = 0): int
+    {
+        $sql = "UPDATE git_tokens SET is_disabled = :is_disabled WHERE id = :id";
+        if ($userId != 0) {
+            $sql .= " AND user_id = :user_id";
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':is_disabled', $isDisabled, PDO::PARAM_BOOL);
+        $stmt->bindParam(':id', $tokenId, PDO::PARAM_INT);
+        if ($userId != 0) {
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        return $stmt->rowCount();
+    }
+
+    public function deleteToken(int $tokenId, int $userId = 0): int
+    {
+        $sql = "DELETE FROM git_tokens WHERE id = :id";
+        if ($userId != 0) {
+            $sql .= " AND user_id = :user_id";
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':id', $tokenId, PDO::PARAM_INT);
+        if ($userId != 0) {
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        return $stmt->rowCount();
     }
 }

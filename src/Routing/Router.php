@@ -26,6 +26,11 @@ class Router
         self::add('GET', $pattern, $controller, $method, $middleware);
     }
 
+    public static function delete(string $pattern, string $controller, string $method, array $middleware = []): void
+    {
+        self::add('DELETE', $pattern, $controller, $method, $middleware);
+    }
+
     private static function add(string $requestType, string $pattern, string $controller, string $method, array $middleware = []): void
     {
         self::$routes[$requestType][$pattern] = ['class' => $controller, 'method' => $method, 'middleware' => $middleware];
@@ -61,7 +66,10 @@ class Router
         $requestUri = strtok($requestUri, '?');
 
         foreach ($routes as $pattern => $routeInfo) {
-            if (preg_match($pattern, $requestUri, $params)) {
+            // Replace placeholders with regex patterns
+            $pattern = preg_replace('/\$\{[^\}]+\}/', '([^/]+)', $pattern);
+
+            if (preg_match("#^$pattern$#", $requestUri, $params)) {
                 array_shift($params);
                 $routeInfo['params'] = $params;
                 return $routeInfo;
@@ -73,7 +81,6 @@ class Router
 
     private static function handleRequest(array $route): Response
     {
-
         $instance = Orchestrator::getInstance()->get($route['class']);
 
         if (!$instance or !method_exists($instance, $route['method'])) {

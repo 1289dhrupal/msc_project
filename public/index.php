@@ -14,22 +14,32 @@ $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->load();
 
 // Allow from any origin
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    header("Access-Control-Allow-Origin: *");
+    header("Access-Control-Allow-Methods: POST, GET, OPTIONS, DELETE, PUT");
+    header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+    header("Access-Control-Allow-Credentials: true");
+    exit(0);
+}
+
 header("Access-Control-Allow-Origin: *");
-
-// Allow specific HTTP methods (e.g., POST)
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-
-// Allow specific headers
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS, DELETE, PUT");
+header("Access-Control-Allow-Credentials: true");
 
 // Create the Orchestrator with the configuration
 Orchestrator::getInstance();
 
-Router::post('#^/register$#', UserController::class, 'register');
-Router::get('#^/verify$#', UserController::class, 'verify');
-Router::post('#^/login$#', UserController::class, 'login');
-Router::post('#^/logout$#', UserController::class, 'logout', [AuthMiddleware::class]);
-Router::post('#^/git-token/store$#', GitTokenController::class, 'store', [AuthMiddleware::class]);
+Router::post('/register', UserController::class, 'register');
+Router::get('/verify', UserController::class, 'verify');
+Router::post('/login', UserController::class, 'login');
+Router::post('/logout', UserController::class, 'logout', [AuthMiddleware::class]);
+Router::post('/git-token/store', GitTokenController::class, 'store', [AuthMiddleware::class]);
+Router::get('/git-token/list', GitTokenController::class, 'list', [AuthMiddleware::class]);
+
+// New route for toggling git token status
+Router::post('/git-token/${tokenId}/toggle', GitTokenController::class, 'toggle', [AuthMiddleware::class]);
+Router::delete('/git-token/${tokenId}', GitTokenController::class, 'delete', [AuthMiddleware::class]);
 
 try {
     // Dispatch the request (example usage)
