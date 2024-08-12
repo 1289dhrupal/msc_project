@@ -12,6 +12,7 @@ class Repository
     private string $url;
     private ?string $description;
     private string $owner;
+    private bool $isDisabled;
     private string $createdAt;
     private ?string $lastFetchedAt;
 
@@ -22,6 +23,7 @@ class Repository
         string $url,
         ?string $description,
         string $owner,
+        bool $isDisabled,
         string $createdAt,
         ?string $lastFetchedAt
     ) {
@@ -31,6 +33,7 @@ class Repository
         $this->url = $url;
         $this->description = $description;
         $this->owner = $owner;
+        $this->isDisabled = $isDisabled;
         $this->createdAt = $createdAt;
         $this->lastFetchedAt = $lastFetchedAt;
     }
@@ -63,6 +66,11 @@ class Repository
     public function getOwner(): string
     {
         return $this->owner;
+    }
+
+    public function isDisabled(): bool
+    {
+        return $this->isDisabled;
     }
 
     public function getCreatedAt(): string

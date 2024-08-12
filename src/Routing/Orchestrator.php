@@ -8,10 +8,12 @@ use ReflectionClass;
 use ReflectionException;
 use MscProject\Controllers\UserController;
 use MscProject\Controllers\GitTokenController;
+use MscProject\Controllers\GitController;
 use MscProject\Services\UserService;
 use MscProject\Services\GitTokenService;
 use MscProject\Services\GitHubService;
 use MscProject\Services\ActivityService;
+use MscProject\Services\GitService;
 use MscProject\Repositories\UserRepository;
 use MscProject\Repositories\SessionRepository;
 use MscProject\Repositories\ActivityRepository;
@@ -81,7 +83,12 @@ class Orchestrator
         return self::get(UserController::class);
     }
 
-    public static function getGitTokenController(): UserController
+    public static function getGitController(): GitController
+    {
+        return self::get(GitController::class);
+    }
+
+    public static function getGitTokenController(): GitTokenController
     {
         return self::get(GitTokenController::class);
     }
@@ -96,14 +103,19 @@ class Orchestrator
         return self::get(ActivityService::class);
     }
 
-    public static function getGitTokenService(): UserService
+    public static function getGitTokenService(): GitTokenService
     {
         return self::get(GitTokenService::class);
     }
 
-    public static function getGitHubService(): UserService
+    public static function getGitHubService(): GitHubService
     {
         return self::get(GitHubService::class);
+    }
+
+    public static function getGitService(): GitService
+    {
+        return self::get(GitService::class);
     }
 
     public static function getUserRepository(): UserRepository
@@ -116,7 +128,7 @@ class Orchestrator
         return self::get(SessionRepository::class);
     }
 
-    public static function getGitRepository(): SessionRepository
+    public static function getGitRepository(): GitRepository
     {
         return self::get(GitRepository::class);
     }

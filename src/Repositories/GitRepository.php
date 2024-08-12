@@ -44,6 +44,7 @@ class GitRepository
             return new Repository(
                 (int) $result['id'],
                 (int) $result['git_token_id'],
+                (bool) $result['is_disabled'],
                 $result['name'],
                 $result['url'],
                 $result['description'],
@@ -190,16 +191,26 @@ class GitRepository
     /**
      * @return GitToken[]
      */
-    public function list(int $userId = 0): array
+    public function listTokens(int $userId = 0, string $gitTokenIds = ""): array
     {
-        $sql = "SELECT * FROM git_tokens";
-        if ($userId == 0) {
-            $sql .= " WHERE user_id = :user_id";
+
+        $sql = "SELECT * FROM git_tokens WHERE 1";
+        if ($userId != 0) {
+            $sql .= " AND user_id = :user_id";
         }
+
+        if ($gitTokenIds != '') {
+            $sql .= " AND FIND_IN_SET(id, :ids)";
+        }
+
         $stmt = $this->db->prepare($sql);
-        if ($userId == 0) {
+        if ($userId != 0) {
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
         }
+        if ($gitTokenIds != '') {
+            $stmt->bindParam(':ids', $gitTokenIds, PDO::PARAM_STR);
+        }
+
         $stmt->execute();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -252,6 +263,36 @@ class GitRepository
         return $stmt->rowCount();
     }
 
+    public function getToken(int $tokenId, int $userId = 0): ?GitToken
+    {
+        $sql = "SELECT * FROM git_tokens WHERE id = :id";
+        if ($userId != 0) {
+            $sql .= " AND user_id = :user_id";
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':id', $tokenId, PDO::PARAM_INT);
+        if ($userId != 0) {
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($result) {
+            return new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['is_disabled'], $result['created_at'], $result['last_fetched_at']);
+        }
+
+        return null;
+    }
+
+    public function deleteRepositoriesByTokenId(int $tokenId): int
+    {
+        $sql = "DELETE FROM repositories WHERE git_token_id = :git_token_id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':git_token_id', $tokenId, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->rowCount();
+    }
+
     public function deleteToken(int $tokenId, int $userId = 0): int
     {
         $sql = "DELETE FROM git_tokens WHERE id = :id";
@@ -260,6 +301,106 @@ class GitRepository
         }
         $stmt = $this->db->prepare($sql);
         $stmt->bindParam(':id', $tokenId, PDO::PARAM_INT);
+        if ($userId != 0) {
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        return $stmt->rowCount();
+    }
+
+    /**
+     * @param int $userId
+     * @return Repository[]
+     */
+    public function listRepositories(int $userId = 0, int $gitTokenId = 0): array
+    {
+        $sql = "SELECT r.*, token AS git_token FROM repositories AS r, git_tokens AS gt WHERE r.git_token_id = gt.id";
+        if ($gitTokenId != 0) {
+            $sql .= " AND git_token_id = :git_token_id";
+        }
+        if ($userId != 0) {
+            $sql .= " AND user_id = :user_id";
+        }
+
+        $stmt = $this->db->prepare($sql);
+        if ($gitTokenId != 0) {
+            $stmt->bindParam(':git_token_id', $gitTokenId, PDO::PARAM_INT);
+        }
+        if ($userId != 0) {
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        }
+
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $repositories = [];
+        foreach ($results as $result) {
+            $repositories[] = new Repository(
+                (int) $result['id'],
+                (int) $result['git_token_id'],
+                $result['name'],
+                $result['url'],
+                $result['description'],
+                $result['owner'],
+                (bool) $result['is_disabled'],
+                $result['created_at'],
+                $result['last_fetched_at']
+            );
+        }
+
+        return $repositories;
+    }
+
+    public function getRepositoryById(int $repoId, int $userId): Repository
+    {
+        $sql = "SELECT r.*, token AS git_token FROM repositories AS r, git_tokens AS gt WHERE r.git_token_id = gt.id AND r.id = :id";
+        if ($userId != 0) {
+            $sql .= " AND user_id = :user_id";
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':id', $repoId, PDO::PARAM_INT);
+        if ($userId != 0) {
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return new Repository(
+            (int) $result['id'],
+            (int) $result['git_token_id'],
+            $result['name'],
+            $result['url'],
+            $result['description'],
+            $result['owner'],
+            (bool) $result['is_disabled'],
+            $result['created_at'],
+            $result['last_fetched_at']
+        );
+    }
+    public function toggleRepository(int $repoId, bool $isDisabled, int $userId = 0): int
+    {
+        $sql = "UPDATE repositories SET is_disabled = :is_disabled WHERE id = :id";
+        if ($userId != 0) {
+            $sql .= " AND (SELECT user_id FROM git_tokens WHERE id = git_token_id) = :user_id";
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':is_disabled', $isDisabled, PDO::PARAM_BOOL);
+        $stmt->bindParam(':id', $repoId, PDO::PARAM_INT);
+        if ($userId != 0) {
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        return $stmt->rowCount();
+    }
+
+    public function deleteRepository(int $repoId, int $userId = 0): int
+    {
+        $sql = "DELETE FROM repositories WHERE id = :id";
+        if ($userId != 0) {
+            $sql .= " AND (SELECT user_id FROM git_tokens WHERE id = git_token_id) = :user_id";
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':id', $repoId, PDO::PARAM_INT);
         if ($userId != 0) {
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
         }

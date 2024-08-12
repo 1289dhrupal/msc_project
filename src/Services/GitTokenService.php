@@ -41,7 +41,7 @@ class GitTokenService
 
     public function list(int $userId = 0, bool $mask = false): array
     {
-        $gitTokens = $this->gitRepository->list($userId);
+        $gitTokens = $this->gitRepository->listTokens($userId);
         $res = [];
         foreach ($gitTokens as $i => $gitToken) {
             $token = $gitToken->getToken();
@@ -65,6 +65,11 @@ class GitTokenService
 
     public function delete(int $tokenId, int $userId = 0): void
     {
-        $this->gitRepository->deleteToken($tokenId, $userId);
+        $gitToken = $this->gitRepository->getToken($tokenId, $userId);
+        if ($gitToken !== null) {
+            // TODO: Delete
+            // $this->gitRepository->deleteRepositoriesByTokenId($tokenId);
+            $this->gitRepository->deleteToken($tokenId, $userId);
+        }
     }
 }

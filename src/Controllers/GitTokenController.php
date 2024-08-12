@@ -65,7 +65,7 @@ class GitTokenController
     public function delete(int $tokenId): Response
     {
         global $user_session;
-        // TODO: delete the reposiories, commits, and commit analysis for this token
+
         $this->gitTokenService->delete($tokenId, $user_session->getId());
         $response = new SuccessResponse("Updated the status for token ID: $tokenId");
 

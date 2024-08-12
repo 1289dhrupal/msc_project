@@ -43,12 +43,9 @@ class GithubService
         }
     }
 
-    /**
-     * @return GitToken[]
-     */
     public function fetchGitTokens(): array
     {
-        return $this->gitTokenService->fetchAll();
+        return $this->gitTokenService->list();
     }
 
     public function fetchRepositories(): array

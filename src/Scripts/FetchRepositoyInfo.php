@@ -22,21 +22,17 @@ $gitTokens = $githubService->fetchGitTokens();
 
 foreach ($gitTokens as $gitToken) {
     // GitHub token and database credentials
-    if ($gitToken->getService() !== 'github') {
+    if ($gitToken['service'] !== 'github' || $gitToken['is_disabled']) {
         continue;
     }
 
-    $githubToken = $gitToken->getToken();
-    $gitTokenId = $gitToken->getId();
-    $userId = $gitToken->getUserId();
-
-    $githubService->authenticate($githubToken);
+    $githubService->authenticate($gitToken['token']);
     $repositories = $githubService->fetchRepositories();
 
     foreach ($repositories as $repository) {
         $update = false;
 
-        $repositoryId = $githubService->getRepository($gitTokenId, $repository['owner']['login'], $repository['name'])?->getId() ?: $githubService->storeRepository($repository, $gitTokenId);
+        $repositoryId = $githubService->getRepository($gitToken['id'], $repository['owner']['login'], $repository['name'])?->getId() ?: $githubService->storeRepository($repository, $gitToken['id']);
         $commits = $githubService->fetchCommits($repository['name']);
 
         foreach ($commits as $commit) {
