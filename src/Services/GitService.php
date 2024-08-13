@@ -73,4 +73,49 @@ class GitService
             $this->gitRepository->deleteRepository($repoId, $userId);
         }
     }
+
+    public function getCommits(int $repoId = 0, int $userId = 0): array
+    {
+        $repo = $this->gitRepository->getRepositoryById($repoId, $userId);
+        if ($repo === null) {
+            throw new Exception('Repository not found');
+        }
+
+        $commits = $this->gitRepository->getCommits($repoId, $userId);
+
+        $commitResponse = [];
+        foreach ($commits as $i => $commit) {
+            $commitResponse[$commit->getId()] = [
+                'id' => $commit->getId(),
+                'repository_id' => $commit->getRepositoryId(),
+                'sha' => $commit->getSha(),
+                'author' => $commit->getAuthor(),
+                'message' => $commit->getMessage(),
+                'date' => $commit->getDate(),
+                'additions' => $commit->getAdditions(),
+                'deletions' => $commit->getDeletions(),
+                'total' => $commit->getTotal(),
+            ];
+        }
+
+        // $commitAnalysis = $this->gitRepository->getCommitAnalysis($repoId, $userId);
+        // foreach ($commitAnalysis as $i => $analysis) {
+        //     $commitResponse[$analysis->getCommitId()]['commit_score'] = $analysis->getQuality();
+        // }
+
+        $repoIds = $repoId !== 0 ? "$repoId" :  "";
+
+        $repoIds = $this->gitRepository->listRepositories($userId, repoIds: $repoIds);
+        $repoResponse = [];
+        foreach ($repoIds as $i => $repoId) {
+            $repoResponse[$i] = [
+                'id' => $repoId->getId(),
+                'git_token_id' => $repoId->getGitTokenId(),
+                'name' => $repoId->getName(),
+                'is_disabled' => $repoId->isDisabled(),
+            ];
+        }
+
+        return ["commits" => array_values($commitResponse), "repositories" => $repoResponse];
+    }
 }

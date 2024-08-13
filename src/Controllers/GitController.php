@@ -58,4 +58,15 @@ class GitController
             throw new \ErrorException('Failed to delete repository', 400, E_USER_WARNING);
         }
     }
+
+    public function getCommits(int $repositoryId = 0): Response
+    {
+        try {
+            global $user_session;
+            $commits = $this->gitService->getCommits($repositoryId, $user_session->getId());
+            return new SuccessResponse("Successfully Fetched Commits", $commits);
+        } catch (Exception $e) {
+            throw new \ErrorException('Failed to fetch commits', 400, E_USER_WARNING);
+        }
+    }
 }

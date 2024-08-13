@@ -39,6 +39,7 @@ Router::post('/git-token/store', GitTokenController::class, 'store', [AuthMiddle
 Router::get('/git-token/list', GitTokenController::class, 'list', [AuthMiddleware::class]);
 Router::get('/git/repositories/list', GitController::class, 'listRepositories', [AuthMiddleware::class]);
 Router::delete('/git/repositories/${repositoryId}', GitController::class, 'deleteRepository', [AuthMiddleware::class]);
+Router::get('/git/repositories/${repositoryId}/commits', GitController::class, 'getCommits', [AuthMiddleware::class]);
 Router::post('/git/repositories/${repositoryId}/toggle', GitController::class, 'toggleRepository', [AuthMiddleware::class]);
 Router::post('/git-token/${tokenId}/toggle', GitTokenController::class, 'toggle', [AuthMiddleware::class]);
 Router::delete('/git-token/${tokenId}', GitTokenController::class, 'delete', [AuthMiddleware::class]);

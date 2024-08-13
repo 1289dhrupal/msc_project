@@ -312,11 +312,14 @@ class GitRepository
      * @param int $userId
      * @return Repository[]
      */
-    public function listRepositories(int $userId = 0, int $gitTokenId = 0): array
+    public function listRepositories(int $userId = 0, int $gitTokenId = 0, string $repoIds = ""): array
     {
         $sql = "SELECT r.*, token AS git_token FROM repositories AS r, git_tokens AS gt WHERE r.git_token_id = gt.id";
         if ($gitTokenId != 0) {
             $sql .= " AND git_token_id = :git_token_id";
+        }
+        if ($repoIds != '') {
+            $sql .= " AND FIND_IN_SET(r.id, :ids)";
         }
         if ($userId != 0) {
             $sql .= " AND user_id = :user_id";
@@ -325,6 +328,9 @@ class GitRepository
         $stmt = $this->db->prepare($sql);
         if ($gitTokenId != 0) {
             $stmt->bindParam(':git_token_id', $gitTokenId, PDO::PARAM_INT);
+        }
+        if ($repoIds != '') {
+            $stmt->bindParam(':ids', $repoIds, PDO::PARAM_STR);
         }
         if ($userId != 0) {
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
@@ -406,5 +412,69 @@ class GitRepository
         }
         $stmt->execute();
         return $stmt->rowCount();
+    }
+
+    public function getCommits(int $repoId = 0, int $userId = 0): array
+    {
+        $sql = "SELECT * FROM commits WHERE repository_id = :repository_id";
+        if ($userId != 0) {
+            $sql .= " AND (SELECT user_id FROM git_tokens WHERE id = (SELECT git_token_id FROM repositories WHERE id = :repository_id)) = :user_id";
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':repository_id', $repoId, PDO::PARAM_INT);
+        if ($userId != 0) {
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $commits = [];
+        foreach ($results as $result) {
+            $commits[] = new Commit(
+                (int) $result['id'],
+                (int) $result['repository_id'],
+                $result['sha'],
+                $result['message'],
+                $result['date'],
+                $result['author'],
+                (int) $result['additions'],
+                (int) $result['deletions'],
+                (int) $result['total'],
+                $result['files']
+            );
+        }
+
+        return $commits;
+    }
+
+    /**
+     * @param int $userId
+     * @return CommitAnalysis[]
+     */
+    public function getCommitAnalysis(int $repoId = 0, int $userId = 0): array
+    {
+        $sql = "SELECT * FROM commit_analysis WHERE commit_id IN (SELECT id FROM commits WHERE repository_id = :repository_id)";
+        if ($userId != 0) {
+            $sql .= " AND (SELECT user_id FROM git_tokens WHERE id = (SELECT git_token_id FROM repositories WHERE id = :repository_id)) = :user_id";
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindParam(':repository_id', $repoId, PDO::PARAM_INT);
+        if ($userId != 0) {
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $commitAnalysis = [];
+        foreach ($results as $result) {
+            $commitAnalysis[] = new CommitAnalysis(
+                (int) $result['commit_id'],
+                (int) $result['quality'],
+                $result['commit_type'],
+                $result['files']
+            );
+        }
+
+        return $commitAnalysis;
     }
 }
