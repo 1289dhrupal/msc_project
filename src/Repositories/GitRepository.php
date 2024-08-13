@@ -236,7 +236,9 @@ class GitRepository
         $stmt->bindParam(':files', $files, PDO::PARAM_STR);
         $stmt->execute();
     }
-
+    /**
+     * @return Commit[]
+     */
     public function getAllCommitsWithDetails(): array
     {
         $stmt = $this->db->prepare("
@@ -419,6 +421,9 @@ class GitRepository
         return $stmt->rowCount();
     }
 
+    /**
+     * @return Commit[]
+     */
     public function getCommits(int $repoId = 0, int $userId = 0): array
     {
         $sql = "SELECT c.* FROM commits c";
