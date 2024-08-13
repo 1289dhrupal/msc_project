@@ -112,6 +112,8 @@ class GitService
                 'id' => $repoId->getId(),
                 'git_token_id' => $repoId->getGitTokenId(),
                 'name' => $repoId->getName(),
+                'url' => $repoId->getUrl(),
+                'owner' => $repoId->getOwner(),
                 'is_disabled' => $repoId->isDisabled(),
             ];
         }

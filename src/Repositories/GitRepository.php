@@ -357,14 +357,19 @@ class GitRepository
         return $repositories;
     }
 
-    public function getRepositoryById(int $repoId, int $userId): Repository
+    public function getRepositoryById(int $repoId = 0, int $userId = 0): Repository
     {
-        $sql = "SELECT r.*, token AS git_token FROM repositories AS r, git_tokens AS gt WHERE r.git_token_id = gt.id AND r.id = :id";
+        $sql = "SELECT r.*, token AS git_token FROM repositories AS r, git_tokens AS gt WHERE r.git_token_id = gt.id";
         if ($userId != 0) {
             $sql .= " AND user_id = :user_id";
         }
+        if ($repoId != 0) {
+            $sql .= " AND r.id = :id";
+        }
         $stmt = $this->db->prepare($sql);
-        $stmt->bindParam(':id', $repoId, PDO::PARAM_INT);
+        if ($repoId != 0) {
+            $stmt->bindParam(':id', $repoId, PDO::PARAM_INT);
+        }
         if ($userId != 0) {
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
         }
@@ -416,12 +421,28 @@ class GitRepository
 
     public function getCommits(int $repoId = 0, int $userId = 0): array
     {
-        $sql = "SELECT * FROM commits WHERE repository_id = :repository_id";
-        if ($userId != 0) {
-            $sql .= " AND (SELECT user_id FROM git_tokens WHERE id = (SELECT git_token_id FROM repositories WHERE id = :repository_id)) = :user_id";
+        $sql = "SELECT c.* FROM commits c";
+
+        $conditions = [];
+
+        if ($repoId != 0) {
+            $conditions[] = "c.repository_id = :repository_id";
         }
+
+        if ($userId != 0) {
+            $sql .= " JOIN repositories r ON c.repository_id = r.id";
+            $sql .= " JOIN git_tokens gt ON r.git_token_id = gt.id";
+            $conditions[] = "gt.user_id = :user_id";
+        }
+
+        if (!empty($conditions)) {
+            $sql .= " WHERE " . implode(" AND ", $conditions);
+        }
+
         $stmt = $this->db->prepare($sql);
-        $stmt->bindParam(':repository_id', $repoId, PDO::PARAM_INT);
+        if ($repoId != 0) {
+            $stmt->bindParam(':repository_id', $repoId, PDO::PARAM_INT);
+        }
         if ($userId != 0) {
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
         }
