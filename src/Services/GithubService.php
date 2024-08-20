@@ -91,7 +91,6 @@ class GithubService
     public function storeCommit(array $commit, array $commitDetails, int $repositoryId): int
     {
         try {
-
             // Store commit with detailed information
             $commitId = $this->gitRepository->storeCommit(
                 $repositoryId,

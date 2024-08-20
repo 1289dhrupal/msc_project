@@ -20,7 +20,7 @@ class GitTokenController
 
     public function store(): Response
     {
-        global $user_session;
+        global $userSession;
 
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $input = array_merge(array('token' => '', 'service' => ''), $input);
@@ -33,7 +33,7 @@ class GitTokenController
             throw new \ErrorException('Invalid service type', 400);
         }
 
-        $result = $this->gitTokenService->storeGitToken($input['token'], $input['service'], $user_session->getId());
+        $result = $this->gitTokenService->storeGitToken($input['token'], $input['service'], $userSession->getId());
         $response = new SuccessResponse('Git token stored successfully', $result, 201);
 
         return $response;
@@ -41,9 +41,9 @@ class GitTokenController
 
     public function list(): Response
     {
-        global $user_session;
+        global $userSession;
 
-        $result = $this->gitTokenService->list($user_session->getId(), $mask = true);
+        $result = $this->gitTokenService->list($userSession->getId(), $mask = true);
         $response = new SuccessResponse('Git tokens retrieved successfully', $result);
 
         return $response;
@@ -51,12 +51,12 @@ class GitTokenController
 
     public function toggle(int $tokenId): Response
     {
-        global $user_session;
+        global $userSession;
 
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $input = array_merge(['is_disabled' => false], $input);
-        $is_disabled = filter_var($input['is_disabled'], FILTER_VALIDATE_BOOLEAN);
-        $this->gitTokenService->toggle($tokenId, $is_disabled, $user_session->getId());
+        $isDisabled = filter_var($input['is_disabled'], FILTER_VALIDATE_BOOLEAN);
+        $this->gitTokenService->toggle($tokenId, $isDisabled, $userSession->getId());
         $response = new SuccessResponse("Updated the status for token ID: $tokenId");
 
         return $response;
@@ -64,9 +64,9 @@ class GitTokenController
 
     public function delete(int $tokenId): Response
     {
-        global $user_session;
+        global $userSession;
 
-        $this->gitTokenService->delete($tokenId, $user_session->getId());
+        $this->gitTokenService->delete($tokenId, $userSession->getId());
         $response = new SuccessResponse("Updated the status for token ID: $tokenId");
 
         return $response;

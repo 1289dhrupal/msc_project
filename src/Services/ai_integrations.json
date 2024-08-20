@@ -16,13 +16,16 @@
                                 "description": "The quality score of the commit message based on its clarity, descriptiveness, and how well it reflects the changes made in the commit. Scores range from 1 to 10, with higher scores indicating better quality.",
                                 "minimum": 1,
                                 "maximum": 10
-                                
                             },
                             "commit_changes_quality_score": {
                                 "type": "integer",
                                 "description": "The overall quality score of the commit based on the changes made, including the number of lines added and deleted, the total number of lines changed, and the quality scores of individual file changes. Scores range from 1 to 100, with higher scores indicating better quality.",
                                 "minimum": 1,
                                 "maximum": 100
+                            },
+                            "number_of_comment_lines": {
+                                "type": "integer",
+                                "description": "The number of lines that contain updated or added comments in the file. This helps in understanding the extent of new or modified documentation added to the code."
                             },
                             "files": {
                                 "type": "array",
@@ -32,28 +35,19 @@
                                     "properties": {
                                         "sha": {
                                             "type": "string",
-                                            "description": "The sha of the file that was changed. This is used to identify the file in the project."
-                                        },
-                                        "status": {
-                                            "type": "string",
-                                            "description": "The status of the file change, indicating whether the file was added, modified, removed, or renamed. This helps categorize the type of change.",
-                                            "enum": [
-                                                "added",
-                                                "modified",
-                                                "removed",
-                                                "renamed"
-                                            ]
+                                            "description": "The SHA identifier of the file that was changed. This is used to uniquely identify the file in the project."
                                         },
                                         "modification_type": {
                                             "type": [
                                                 "null",
                                                 "string"
                                             ],
-                                            "description": "The specific type of modification made to the file, if applicable. Possible values include: 'added_code' for new code (high score), 'updated_code' for significant updates (high score), 'renamed_elements' for renaming variables or classes (low score), 'whitespace_changes' for formatting or whitespace modifications (very low score), 'changed_operators' for changes in code operators (low score).",
+                                            "description": "The specific type of modification made to the file, if applicable. Possible values include: 'added_code' for new code (high score), 'comments' if it's just new or updated comments (high score), 'updated_code' for significant updates (high score), 'renamed_elements' for renaming variables or classes (low score), 'whitespace_changes' for formatting or whitespace modifications (very low score), 'changed_operators' for changes in code operators (low score).",
                                             "enum": [
                                                 null,
                                                 "added_code",
                                                 "updated_code",
+                                                "comments",
                                                 "renamed_elements",
                                                 "whitespace_changes",
                                                 "changed_operators"
@@ -61,14 +55,13 @@
                                         },
                                         "quality_score": {
                                             "type": "integer",
-                                            "description": "The quality score of the file change based on the modification type.",
+                                            "description": "The quality score of the file change based on the modification type. Scores range from 1 to 10, with higher scores indicating better quality.",
                                             "minimum": 1,
                                             "maximum": 10
                                         }
                                     },
                                     "required": [
                                         "sha",
-                                        "status",
                                         "modification_type",
                                         "quality_score"
                                     ]
@@ -77,6 +70,7 @@
                         },
                         "required": [
                             "files",
+                            "number_of_comment_lines",
                             "commit_changes_quality_score",
                             "commit_message_quality_score"
                         ]

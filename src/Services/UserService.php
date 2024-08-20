@@ -32,9 +32,9 @@ class UserService
 
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
         $user = new User(null, $name, $email, $hashedPassword, 'pending');
-        $user_id = $this->userRepository->createUser($user);
-        if ($user_id !== 0) {
-            $user->setId($user_id);
+        $userId = $this->userRepository->createUser($user);
+        if ($userId !== 0) {
+            $user->setId($userId);
             $this->sendVerificationEmail($user);
             return true;
         }

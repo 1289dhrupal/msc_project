@@ -4,80 +4,67 @@
         "commit_changes_quality_score": 60,
         "files": [
             {
-                "sha": "f5184b707ca39bf4a73c83be2b5a43c75d334b34",
-                "status": "added",
+                "sha": "f5184b7",
                 "modification_type": "added_code",
                 "quality_score": 10
             },
             {
-                "sha": "708d9a5771afc617a4147e55ecde84829fade8d2",
-                "status": "removed",
+                "sha": "708d9a5",
                 "modification_type": null,
                 "quality_score": 1
             },
             {
-                "sha": "251c1380de811adfc380ac49c7f3e5c099de6b07",
-                "status": "renamed",
+                "sha": "251c138",
                 "modification_type": "renamed_elements",
                 "quality_score": 2
             },
             {
-                "sha": "d15c6e9549266eb8b6f21ad8aaabb956d111da1c",
-                "status": "renamed",
+                "sha": "d15c6e9",
                 "modification_type": "renamed_elements",
                 "quality_score": 2
             },
             {
-                "sha": "305ffc81fba44dd8aa08bb08716844af31dc2ce7",
-                "status": "removed",
+                "sha": "305ffc8",
                 "modification_type": null,
                 "quality_score": 1
             },
             {
-                "sha": "043cb331d945c7544e71f230e3231b6548578228",
-                "status": "modified",
+                "sha": "043cb33",
                 "modification_type": "whitespace_changes",
                 "quality_score": 1
             },
             {
-                "sha": "05d02f493aa3df17b0c45e0e6242333936a52a0b",
-                "status": "modified",
+                "sha": "05d02f4",
                 "modification_type": "updated_code",
                 "quality_score": 7
             },
             {
-                "sha": "51701ce7e90bcf7ff0f9fe8e5e6aa2178705befc",
-                "status": "added",
+                "sha": "51701ce",
                 "modification_type": "added_code",
                 "quality_score": 10
             },
             {
-                "sha": "98d5b513d152fe5f764350cae47cb433f3bbda97",
-                "status": "added",
+                "sha": "98d5b51",
                 "modification_type": "added_code",
                 "quality_score": 10
             },
             {
-                "sha": "4308fdd0cbf5371ef393e2166bc10a8a64275f9f",
-                "status": "modified",
+                "sha": "4308fdd",
                 "modification_type": "updated_code",
                 "quality_score": 7
             },
             {
-                "sha": "0df861ead6f42aae3bade08fe8afbf0ccf4b0ef6",
-                "status": "modified",
+                "sha": "0df861e",
                 "modification_type": "updated_code",
                 "quality_score": 7
             },
             {
-                "sha": "2b30701fbe67222fa87807367548131a9b39401f",
-                "status": "modified",
+                "sha": "2b30701",
                 "modification_type": "updated_code",
                 "quality_score": 7
             },
             {
-                "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
-                "status": "modified",
+                "sha": "e69de29",
                 "modification_type": "whitespace_changes",
                 "quality_score": 1
             }

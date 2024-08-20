@@ -4,48 +4,76 @@ declare(strict_types=1);
 
 namespace MscProject\Services;
 
-use MscProject\Repositories\GitRepository;
-use MscProject\Models\CommitAnalysis;
-
 class GitAnalysisService
 {
-    private GitRepository $gitRepository;
 
-    public function __construct(GitRepository $gitRepository)
-    {
-        $this->gitRepository = $gitRepository;
-    }
+    public function __construct() {}
 
-    public function analyzeCommit(int $commitId, array $commitDetails): ?CommitAnalysis
+    public function analyzeCommit(array $commitDetailsFiles, string $commitMessage): array
     {
         // Generate AI report
         // TODO: add the logic for commit analysis in php
-        $res = $this->generateAiReport($commitDetails);
-        $response = json_decode($res, true)['commit_details'];
-        $quality = $response['commit_changes_quality_score'];
-        $commitType = implode(",", array_map(fn ($x) => $x['modification_type'], $response['files']));
 
-        $commitAnalysis = new CommitAnalysis(
-            $commitId,
-            $quality,
-            $commitType,
-            $res
-        );
+        $commitAnalysis = $this->generateAiReport(["files" => $commitDetailsFiles, "commit_message" => $commitMessage]);
+        $commitAnalysis =  json_decode($commitAnalysis, true);
 
-        return $commitAnalysis;
+        $commitDetailsFiles = $this->mergeCommitFiles($commitDetailsFiles, $commitAnalysis['commit_details']['files']);
+        $response = [
+            "files" => $commitDetailsFiles,
+            "stats" => [
+                'number_of_comment_lines' => $commitAnalysis['commit_details']['number_of_comment_lines'] ?? 0,
+                'commit_changes_quality_score' => $commitAnalysis['commit_details']['commit_changes_quality_score'] ?? 0,
+                'commit_message_quality_score' => $commitAnalysis['commit_details']['commit_message_quality_score'] ?? 0,
+            ]
+        ];
+
+        return $response;
     }
 
-    public function storeCommitAnalysis(CommitAnalysis $commitAnalysis): void
+    public function mergeCommitFiles(array $commitFiles, array $commitAnalysisFiles): array
     {
-        // Store the analysis result in the database
-        $this->gitRepository->storeCommitAnalysis($commitAnalysis);
+        $commitFiles = array_combine(array_column($commitFiles, 'sha'), $commitFiles);
+        $commitAnalysisFiles = array_combine(array_column($commitAnalysisFiles, 'sha'), $commitAnalysisFiles);
+        foreach ($commitFiles as $sha => $val) {
+            if (isset($commitAnalysisFiles[$sha])) {
+                $commitFiles[$sha] = array_merge($commitAnalysisFiles[$sha], $commitFiles[$sha]);
+            } else {
+                $commitFiles[$sha]['quality_score'] = 0;
+                $commitFiles[$sha]['modification_type'] = $this->getModificationType($commitFiles[$sha]);
+            }
+        }
+
+        return array_values($commitFiles);
     }
 
-    private function generateAiReport(array $commit_details, string $filename = null): string
+    private function getModificationType(array $file): string
+    {
+        if ($file['status'] == 'added') {
+            if ($file['changes'] == 0) {
+                return 'whitespace_changes';
+            } else {
+                return 'added_code';
+            }
+        } else if ($file['status'] == 'modified') {
+            return 'updated_code';
+        } else if ($file['status'] == 'removed') {
+            return 'removed_code';
+        } else if ($file['status'] == 'renamed') {
+            if ($file['changes'] == 0) {
+                return 'renamed_elements';
+            } else if ($file['changes'] == $file['additions']) {
+                return 'added_code';
+            } else {
+                return 'removed_code';
+            }
+        }
+    }
+
+    private function generateAiReport(array $commitDetails, string $filename = null): string
     {
         if ($_ENV['ENV'] == 'dev') {
             // TODO: Remove this line and use the actual commit details
-            return file_get_contents(__DIR__ . '/output.json');
+            return file_get_contents(__DIR__ . '/outputnew.json');
         }
 
         if ($filename === null) {
@@ -81,9 +109,9 @@ class GitAnalysisService
             If the commit includes both low-scoring changes (e.g., renaming variables) and high-scoring changes (e.g., adding new code or significant updates), the overall score should reflect the higher impact of the significant changes.
         ";
 
-        $prompt .= " Commit details:\n" . json_encode($commit_details);
+        $prompt .= " Commit details:\n" . json_encode($commitDetails);
 
-        $function_calling = [
+        $functionCalling = [
             "messages" => [
                 [
                     "role" => "user",
@@ -99,7 +127,7 @@ class GitAnalysisService
             ]
         ];
 
-        $common_parameter = [
+        $commonParameter = [
             "model" => "gpt-4-turbo",
             "temperature" => 0,
             "top_p" => 0,
@@ -109,7 +137,7 @@ class GitAnalysisService
             "n" => 1,
         ];
 
-        $completion = $this->_openai("chat/completions", array_merge($common_parameter, $function_calling));
+        $completion = $this->_openai("chat/completions", array_merge($commonParameter, $functionCalling));
 
         if (!isset($completion['choices'])) {
             trigger_error("OpenAI error: \n" . json_encode($completion, JSON_PRETTY_PRINT + JSON_UNESCAPED_SLASHES) . "\n",  E_USER_ERROR);
@@ -120,7 +148,6 @@ class GitAnalysisService
 
     private function _openai(string $api, array $data)
     {
-        $openai_api_key = $_ENV['OPENAI_API_KEY'];
 
         $ch = curl_init();
         curl_setopt_array($ch, [
@@ -128,7 +155,7 @@ class GitAnalysisService
             CURLOPT_POST => true,
             CURLOPT_URL => "https://api.openai.com/v1/" . $api,
             CURLOPT_HTTPHEADER => [
-                "Authorization: Bearer " . $openai_api_key,
+                "Authorization: Bearer " . $_ENV['OPENAI_API_KEY'],
                 "Content-Type: application/json"
             ],
             CURLOPT_POSTFIELDS => json_encode($data)

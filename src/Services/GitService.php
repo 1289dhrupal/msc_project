@@ -98,11 +98,6 @@ class GitService
             ];
         }
 
-        // $commitAnalysis = $this->gitRepository->getCommitAnalysis($repoId, $userId);
-        // foreach ($commitAnalysis as $i => $analysis) {
-        //     $commitResponse[$analysis->getCommitId()]['commit_score'] = $analysis->getQuality();
-        // }
-
         $repoIds = $repoId !== 0 ? "$repoId" :  "";
 
         $repoIds = $this->gitRepository->listRepositories($userId, repoIds: $repoIds);

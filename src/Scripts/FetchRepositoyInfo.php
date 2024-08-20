@@ -15,7 +15,14 @@ $dotenv = Dotenv::createImmutable(__DIR__ . '/../../');
 $dotenv->load();
 
 // Create the Orchestrator with the configuration
+
+/**
+ * @var GitHubService
+ */
 $githubService = Orchestrator::getInstance()->get(GithubService::class);
+/**
+ * @var GitAnalysisService
+ */
 $gitAnalysisService = Orchestrator::getInstance()->get(GitAnalysisService::class);
 
 $gitTokens = $githubService->fetchGitTokens();
@@ -30,7 +37,9 @@ foreach ($gitTokens as $gitToken) {
     $repositories = $githubService->fetchRepositories();
 
     foreach ($repositories as $repository) {
-        $update = false;
+        if ($repository['is_disabled']) {
+            continue;
+        }
 
         $repositoryId = $githubService->getRepository($gitToken['id'], $repository['owner']['login'], $repository['name'])?->getId() ?: $githubService->storeRepository($repository, $gitToken['id']);
         $commits = $githubService->fetchCommits($repository['name']);
@@ -38,15 +47,23 @@ foreach ($gitTokens as $gitToken) {
         foreach ($commits as $commit) {
             $commitDetails = $githubService->fetchCommitDetails($commit['sha'], $repository['name']);
             if (!$githubService->getCommit($repositoryId, $commit['sha'])) {
+                $commitDetails['files'] = array_map(fn($row) => [
+                    'sha' => substr($row['sha'], 0, 7),
+                    'filename' => $row['filename'],
+                    'status' => $row['status'],
+                    'additions' => $row['additions'],
+                    'deletions' => $row['deletions'],
+                    'changes' => $row['changes'],
+                    'patch' => $row['patch'] ?? null,
+                ], $commitDetails['files']);
+
+                $commitAnalysis = $gitAnalysisService->analyzeCommit($commitDetails['files'], $commitDetails['commit']['message']);
+                $commitDetails['files'] = ["files" => $commitAnalysis['files'], "stats" => array_merge($commitDetails['stats'], $commitAnalysis['stats'])];
                 $commitId = $githubService->storeCommit($commit, $commitDetails, $repositoryId);
-                $commitAnalysis = $gitAnalysisService->analyzeCommit($commitId, $commitDetails);
-                $gitAnalysisService->storeCommitAnalysis($commitAnalysis);
-                $update = true;
             }
         }
 
-        if ($update == true) {
-            $githubService->updateRepositoryFetchedAt($repositoryId);
-        }
+        $githubService->updateRepositoryFetchedAt($repositoryId);
+        // TODO: GITTOKEN SERVICE
     }
 }
