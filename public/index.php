@@ -3,6 +3,7 @@
 require '../vendor/autoload.php';
 
 use Dotenv\Dotenv;
+use MscProject\Controllers\DashboardController;
 use MscProject\Routing\Router;
 use MscProject\Routing\Orchestrator;
 use MscProject\Middleware\AuthMiddleware;
@@ -44,6 +45,7 @@ Router::get('/git/commits', GitController::class, 'getCommits', [AuthMiddleware:
 Router::post('/git/repositories/${repositoryId}/toggle', GitController::class, 'toggleRepository', [AuthMiddleware::class]);
 Router::post('/git-token/${tokenId}/toggle', GitTokenController::class, 'toggle', [AuthMiddleware::class]);
 Router::delete('/git-token/${tokenId}', GitTokenController::class, 'delete', [AuthMiddleware::class]);
+Router::get('/dashboard/commitFrequency', DashboardController::class, 'commitFrequency', [AuthMiddleware::class]);
 
 try {
     // Dispatch the request (example usage)

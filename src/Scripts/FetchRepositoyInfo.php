@@ -37,11 +37,13 @@ foreach ($gitTokens as $gitToken) {
     $repositories = $githubService->fetchRepositories();
 
     foreach ($repositories as $repository) {
-        if ($repository['is_disabled']) {
+        $repo = $githubService->getRepository($gitToken['id'], $repository['owner']['login'], $repository['name']);
+
+        if ($repo && $repo->isDisabled()) {
             continue;
         }
 
-        $repositoryId = $githubService->getRepository($gitToken['id'], $repository['owner']['login'], $repository['name'])?->getId() ?: $githubService->storeRepository($repository, $gitToken['id']);
+        $repositoryId = $repo?->getId() ?: $githubService->storeRepository($repository, $gitToken['id']);
         $commits = $githubService->fetchCommits($repository['name']);
 
         foreach ($commits as $commit) {
@@ -59,6 +61,15 @@ foreach ($gitTokens as $gitToken) {
 
                 $commitAnalysis = $gitAnalysisService->analyzeCommit($commitDetails['files'], $commitDetails['commit']['message']);
                 $commitDetails['files'] = ["files" => $commitAnalysis['files'], "stats" => array_merge($commitDetails['stats'], $commitAnalysis['stats'])];
+                $commitDetails['files']["files"] = array_map(fn($row) => [
+                    'sha' => substr($row['sha'], 0, 7),
+                    'filename' => $row['filename'],
+                    'status' => $row['status'],
+                    'additions' => $row['additions'],
+                    'deletions' => $row['deletions'],
+                    'changes' => $row['changes'],
+                ], $commitDetails['files']["files"]);
+
                 $commitId = $githubService->storeCommit($commit, $commitDetails, $repositoryId);
             }
         }

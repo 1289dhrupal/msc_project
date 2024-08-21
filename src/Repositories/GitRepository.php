@@ -43,11 +43,11 @@ class GitRepository
             return new Repository(
                 (int) $result['id'],
                 (int) $result['git_token_id'],
-                (bool) $result['is_disabled'],
                 $result['name'],
                 $result['url'],
                 $result['description'],
                 $result['owner'],
+                (bool) $result['is_disabled'],
                 $result['created_at'],
                 $result['last_fetched_at']
             );
@@ -423,11 +423,15 @@ class GitRepository
             $sql .= " JOIN repositories r ON c.repository_id = r.id";
             $sql .= " JOIN git_tokens gt ON r.git_token_id = gt.id";
             $conditions[] = "gt.user_id = :user_id";
+            $conditions[] = "r.is_disabled = 0";
+            $conditions[] = "gt.is_disabled = 0";
         }
 
         if (!empty($conditions)) {
             $sql .= " WHERE " . implode(" AND ", $conditions);
         }
+
+        $sql .= " ORDER BY c.date ASC";
 
         $stmt = $this->db->prepare($sql);
         if ($repoId != 0) {

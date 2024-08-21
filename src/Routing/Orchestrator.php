@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace MscProject\Routing;
 
+use MscProject\Controllers\DashboardController;
 use ReflectionClass;
 use ReflectionException;
 use MscProject\Controllers\UserController;
@@ -91,6 +92,10 @@ class Orchestrator
     public static function getGitTokenController(): GitTokenController
     {
         return self::get(GitTokenController::class);
+    }
+    public static function getDashboardController(): DashboardController
+    {
+        return self::get(DashboardController::class);
     }
 
     public static function getUserService(): UserService

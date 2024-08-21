@@ -60,7 +60,8 @@ class GithubService
 
     public function getRepository(int $gitTokenId, string $owner, string $name): ?Repository
     {
-        return $this->gitRepository->getRepository($gitTokenId, $owner, $name);
+        $repos = $this->gitRepository->getRepository($gitTokenId, $owner, $name);
+        return $repos;
     }
 
     public function storeRepository(array $repository, int $gitTokenId): int
