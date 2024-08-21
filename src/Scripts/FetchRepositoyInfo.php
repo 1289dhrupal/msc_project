@@ -28,11 +28,12 @@ $gitAnalysisService = Orchestrator::getInstance()->get(GitAnalysisService::class
 $gitTokens = $githubService->fetchGitTokens();
 
 foreach ($gitTokens as $gitToken) {
-    // GitHub token and database credentials
-    if ($gitToken['service'] !== 'github' || $gitToken['is_disabled']) {
+
+    if ($gitToken['is_disabled']) {
         continue;
     }
 
+    // GitHub token and database credentials
     $githubService->authenticate($gitToken['token']);
     $repositories = $githubService->fetchRepositories();
 

@@ -171,7 +171,7 @@ class GitRepository
     /**
      * @return GitToken[]
      */
-    public function listTokens(int $userId = 0, string $gitTokenIds = ""): array
+    public function listTokens(int $userId = 0, string $gitTokenIds = "", string $service = ""): array
     {
 
         $sql = "SELECT * FROM git_tokens WHERE 1";
@@ -183,12 +183,19 @@ class GitRepository
             $sql .= " AND FIND_IN_SET(id, :ids)";
         }
 
+        if ($service != "") {
+            $sql .= " AND service = :service";
+        }
+
         $stmt = $this->db->prepare($sql);
         if ($userId != 0) {
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
         }
         if ($gitTokenIds != '') {
             $stmt->bindParam(':ids', $gitTokenIds, PDO::PARAM_STR);
+        }
+        if ($service != '') {
+            $stmt->bindParam(':service', $service, PDO::PARAM_STR);
         }
 
         $stmt->execute();

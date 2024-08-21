@@ -43,7 +43,7 @@ class GithubService
 
     public function fetchGitTokens(): array
     {
-        return $this->gitTokenService->list();
+        return $this->gitTokenService->list(service: 'github');
     }
 
     public function fetchRepositories(): array

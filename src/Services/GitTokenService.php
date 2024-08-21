@@ -30,9 +30,9 @@ class GitTokenService
         return $this->gitRepository->create($gitToken);
     }
 
-    public function list(int $userId = 0, bool $mask = false): array
+    public function list(int $userId = 0, bool $mask = false, string $service = ''): array
     {
-        $gitTokens = $this->gitRepository->listTokens($userId);
+        $gitTokens = $this->gitRepository->listTokens($userId, service: $service);
         $res = [];
         foreach ($gitTokens as $i => $gitToken) {
             $token = $gitToken->getToken();
