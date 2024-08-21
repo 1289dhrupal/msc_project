@@ -2,6 +2,7 @@
     "commit_details": {
         "commit_message_quality_score": 3,
         "commit_changes_quality_score": 60,
+        "number_of_comment_lines": 5,
         "files": [
             {
                 "sha": "f5184b7",

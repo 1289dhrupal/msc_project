@@ -169,25 +169,6 @@ class GitRepository
     }
 
     /**
-     * @param int $userId
-     * @return GitToken[]
-     */
-    public function getTokensByUserId(int $userId): array
-    {
-        $stmt = $this->db->prepare("SELECT * FROM git_tokens WHERE user_id = :user_id");
-        $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
-        $stmt->execute();
-        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $tokens = [];
-        foreach ($results as $result) {
-            $tokens[] = new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['is_disabled'], $result['created_at'], $result['last_fetched_at']);
-        }
-
-        return $tokens;
-    }
-
-    /**
      * @return GitToken[]
      */
     public function listTokens(int $userId = 0, string $gitTokenIds = ""): array

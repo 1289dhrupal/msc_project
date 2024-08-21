@@ -9,8 +9,6 @@ require 'vendor/autoload.php';
 use Github\Client;
 use Github\AuthMethod;
 use MscProject\Repositories\GitRepository;
-use MscProject\Models\Repository;
-use MscProject\Models\Commit;
 
 class GithubService
 {
@@ -58,10 +56,25 @@ class GithubService
         }
     }
 
-    public function getRepository(int $gitTokenId, string $owner, string $name): ?Repository
+    public function getRepository(int $gitTokenId, string $owner, string $name): array
     {
-        $repos = $this->gitRepository->getRepository($gitTokenId, $owner, $name);
-        return $repos;
+        $repository = $this->gitRepository->getRepository($gitTokenId, $owner, $name);
+
+        if (!$repository) {
+            return [];
+        }
+
+        return [
+            'id' => $repository->getId(),
+            'git_token_id' => $repository->getGitTokenId(),
+            'name' => $repository->getName(),
+            'url' => $repository->getUrl(),
+            'description' => $repository->getDescription(),
+            'owner' => $repository->getOwner(),
+            'is_disabled' => $repository->isDisabled(),
+            'created_at' => $repository->getCreatedAt(),
+            'last_fetched_at' => $repository->getLastFetchedAt()
+        ];
     }
 
     public function storeRepository(array $repository, int $gitTokenId): int
@@ -84,9 +97,27 @@ class GithubService
         }
     }
 
-    public function getCommit(int $repositoryId, string $sha): ?Commit
+    public function getCommit(int $repositoryId, string $sha): array
     {
-        return $this->gitRepository->getCommit($repositoryId, $sha);
+
+        $commit = $this->gitRepository->getCommit($repositoryId, $sha);
+
+        if (!$commit) {
+            return [];
+        }
+
+        return [
+            'id' => $commit->getId(),
+            'repository_id' => $commit->getRepositoryId(),
+            'sha' => $commit->getSha(),
+            'author' => $commit->getAuthor(),
+            'message' => $commit->getMessage(),
+            'date' => $commit->getDate(),
+            'additions' => $commit->getAdditions(),
+            'deletions' => $commit->getDeletions(),
+            'total' => $commit->getTotal(),
+            'files' => json_decode($commit->getFiles(), true)
+        ];
     }
 
     public function storeCommit(array $commit, array $commitDetails, int $repositoryId): int

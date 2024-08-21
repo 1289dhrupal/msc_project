@@ -73,7 +73,7 @@ class GitAnalysisService
     {
         if ($_ENV['ENV'] == 'dev') {
             // TODO: Remove this line and use the actual commit details
-            return file_get_contents(__DIR__ . '/outputnew.json');
+            return file_get_contents(__DIR__ . '/output.json');
         }
 
         if ($filename === null) {

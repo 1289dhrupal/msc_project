@@ -90,17 +90,6 @@ class UserService
         return $this->sessionRepository->deleteSessionByApiKey($apiKey);
     }
 
-    public function getUserByEmail(string $email): User
-    {
-        $user = $this->userRepository->getUserByEmail($email);
-
-        if ($user === null) {
-            throw new \ErrorException('User not found', 404, E_USER_WARNING);
-        }
-
-        return $user;
-    }
-
     private function sendVerificationEmail(User $user): void
     {
         $mailer = Mailer::getInstance();

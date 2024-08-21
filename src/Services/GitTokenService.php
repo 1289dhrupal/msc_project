@@ -30,15 +30,6 @@ class GitTokenService
         return $this->gitRepository->create($gitToken);
     }
 
-    /**
-     * @param int $userId
-     * @return GitToken[]
-     */
-    public function getTokensByUserId(int $userId): array
-    {
-        return $this->gitRepository->getTokensByUserId($userId);
-    }
-
     public function list(int $userId = 0, bool $mask = false): array
     {
         $gitTokens = $this->gitRepository->listTokens($userId);

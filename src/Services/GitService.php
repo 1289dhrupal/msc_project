@@ -58,7 +58,6 @@ class GitService
         return $res;
     }
 
-
     public function toggleRepository(int $repoId, bool $isDisabled, int $userId = 0): void
     {
         $this->gitRepository->toggleRepository($repoId, $isDisabled, $userId);

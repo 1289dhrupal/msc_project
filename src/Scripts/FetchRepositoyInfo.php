@@ -39,11 +39,11 @@ foreach ($gitTokens as $gitToken) {
     foreach ($repositories as $repository) {
         $repo = $githubService->getRepository($gitToken['id'], $repository['owner']['login'], $repository['name']);
 
-        if ($repo && $repo->isDisabled()) {
+        if ($repo && $repo['is_disabled']) {
             continue;
         }
 
-        $repositoryId = $repo?->getId() ?: $githubService->storeRepository($repository, $gitToken['id']);
+        $repositoryId = $repo['id'] ?? $githubService->storeRepository($repository, $gitToken['id']);
         $commits = $githubService->fetchCommits($repository['name']);
 
         foreach ($commits as $commit) {
