@@ -49,7 +49,7 @@ class GitAnalysisService
     private function getModificationType(array $file): string
     {
         if ($file['status'] == 'added') {
-            if ($file['changes'] == 0) {
+            if (isset($file['changes']) && $file['changes'] == 0) {
                 return 'whitespace_changes';
             } else {
                 return 'added_code';
@@ -59,7 +59,7 @@ class GitAnalysisService
         } else if ($file['status'] == 'removed') {
             return 'removed_code';
         } else if ($file['status'] == 'renamed') {
-            if ($file['changes'] == 0) {
+            if (!isset($file['changes']) ||  $file['changes'] == 0) {
                 return 'renamed_elements';
             } else if ($file['changes'] == $file['additions']) {
                 return 'added_code';

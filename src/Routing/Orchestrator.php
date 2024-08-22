@@ -20,6 +20,7 @@ use MscProject\Repositories\SessionRepository;
 use MscProject\Repositories\ActivityRepository;
 use MscProject\Repositories\GitRepository;
 use MscProject\Middleware\AuthMiddleware;
+use MscProject\Services\GitLabService;
 
 class Orchestrator
 {
@@ -116,6 +117,11 @@ class Orchestrator
     public static function getGitHubService(): GitHubService
     {
         return self::get(GitHubService::class);
+    }
+
+    public static function getGitLabService(): GitLabService
+    {
+        return self::get(GitLabService::class);
     }
 
     public static function getGitService(): GitService
