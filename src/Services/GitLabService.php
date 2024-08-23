@@ -7,6 +7,7 @@ namespace MscProject\Services;
 require 'vendor/autoload.php';
 
 use MscProject\Repositories\GitRepository;
+use MscProject\Services\GitProviderService;
 
 class GitLabService extends GitProviderService
 {
@@ -64,7 +65,7 @@ class GitLabService extends GitProviderService
         $commitId = $this->gitRepository->storeCommit(
             $repositoryId,
             $commit['id'],
-            $commit['author_name'],
+            $commit['author_email'] ?? $commit['committer_email'],
             $commit['message'],
             $commit['created_at'],
             $commit['stats']['additions'],

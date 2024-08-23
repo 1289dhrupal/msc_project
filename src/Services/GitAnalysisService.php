@@ -166,4 +166,31 @@ class GitAnalysisService
 
         return $response;
     }
+
+    public function getChangeStat(string $patch): array
+    {
+        $lines = explode("\n", $patch);
+        $additions = 0;
+        $deletions = 0;
+
+        foreach ($lines as $line) {
+            // Skip lines that indicate the range information, like @@ -39,7 +39,7 @@
+            if (strpos($line, '@@') === 0) {
+                continue;
+            }
+
+            // Count additions and deletions
+            if (strpos($line, '+') === 0 && strpos($line, '+++') !== 0) {
+                $additions++;
+            } elseif (strpos($line, '-') === 0 && strpos($line, '---') !== 0) {
+                $deletions++;
+            }
+        }
+
+        return [
+            'additions' => $additions,
+            'deletions' => $deletions,
+            'changes' => $additions + $deletions
+        ];
+    }
 }

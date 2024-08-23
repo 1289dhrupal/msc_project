@@ -53,12 +53,12 @@ foreach ($gitTokens as $gitToken) {
             $commitDetails['files'] = $gitLabService->fetchCommitDetails($commit['id'], $repository['path_with_namespace']);
             if (!$gitLabService->getCommit($repositoryId, $commit['id'])) {
 
-                $commitDetails['files'] = array_map(fn($row) => [
+                $commitDetails['files'] = array_map(fn($row) => array_merge([
                     'sha' => substr(hash('sha256', $row['new_path']), 0, 7),
                     'filename' => $row['new_path'] ?? $row['old_path'],
                     'status' => $row['new_file'] ? 'added' : ($row['deleted_file'] ? 'deleted' : ($row['renamed_file'] ? 'renamed' : 'modified')),
                     'patch' => $row['diff'],
-                ], $commitDetails['files']);
+                ], $gitAnalysisService->getChangeStat($row['diff'])), $commitDetails['files']);
 
                 $commitAnalysis = $gitAnalysisService->analyzeCommit($commitDetails['files'], $commit['message']);
                 $commitDetails['files'] = ["files" => $commitAnalysis['files'], "stats" => array_merge($commit['stats'] ?? [], $commitAnalysis['stats'])];
@@ -70,7 +70,6 @@ foreach ($gitTokens as $gitToken) {
                     'deletions' => $row['deletions'] ?? null,
                     'changes' => $row['changes'] ?? null,
                 ], $commitDetails['files']["files"]);
-
 
                 $commitId = $gitLabService->storeCommit($commit, $commitDetails, $repositoryId);
             }
