@@ -11,7 +11,7 @@ use MscProject\Services\GitProviderService;
 
 class GitLabService extends GitProviderService
 {
-    private const GITLAB_API_URL = "https://campus.cs.le.ac.uk/gitlab/api/v4";
+    private string $gitlabAPIUrl;
     private string $gitToken;
     private const SERVICE = 'gitlab';
 
@@ -20,15 +20,16 @@ class GitLabService extends GitProviderService
         parent::__construct($gitTokenService, $gitRepository, self::SERVICE);
     }
 
-    public function authenticate(string $gitlabToken): void
+    public function authenticate(string $gitlabToken, string $url = null): void
     {
         $this->gitToken = $gitlabToken;
+        $this->gitlabAPIUrl =  "{$url}/api/v4" ?? 'https://campus.cs.le.ac.uk/gitlab/api/v4';
         $this->username = $this->fetchUsername();
     }
 
     protected function fetchUsername(): string
     {
-        $url = self::GITLAB_API_URL . "/user";
+        $url = $this->gitlabAPIUrl . "/user";
         $response = $this->makeGetRequest($url);
 
         return $response['username'];
@@ -36,21 +37,21 @@ class GitLabService extends GitProviderService
 
     public function fetchRepositories(): array
     {
-        $url = self::GITLAB_API_URL . "/projects?owned=true";
+        $url = $this->gitlabAPIUrl . "/projects?owned=true";
         return $this->makeGetRequest($url);
     }
 
     public function fetchCommits(string $pathWithNamespace): array
     {
         $branch = 'main';  // Specify the branch name here, typically 'main' or 'master'
-        $url = self::GITLAB_API_URL . "/projects/{$this->urlEncodeRepoName($pathWithNamespace)}/repository/commits?ref_name={$branch}&with_stats=true";
+        $url = $this->gitlabAPIUrl . "/projects/{$this->urlEncodeRepoName($pathWithNamespace)}/repository/commits?ref_name={$branch}&with_stats=true";
         $commits = $this->makeGetRequest($url);
         return array_reverse($commits);
     }
 
     public function fetchCommitDetails(string $sha, string $pathWithNamespace): array
     {
-        $url = self::GITLAB_API_URL . "/projects/{$this->urlEncodeRepoName($pathWithNamespace)}/repository/commits/{$sha}/diff";
+        $url = $this->gitlabAPIUrl . "/projects/{$this->urlEncodeRepoName($pathWithNamespace)}/repository/commits/{$sha}/diff";
         return $this->makeGetRequest($url);
     }
 

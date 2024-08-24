@@ -97,6 +97,10 @@ class GitService
             ];
         }
 
+        if ($repoId == 0) {
+            $commitResponse = array_slice($commitResponse, 0, 20);
+        }
+
         $repoIds = $repoId !== 0 ? "$repoId" :  "";
 
         $repoIds = $this->gitRepository->listRepositories($userId, repoIds: $repoIds);

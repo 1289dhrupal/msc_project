@@ -19,14 +19,14 @@ class GitTokenService
         $this->gitRepository = $gitRepository;
     }
 
-    public function storeGitToken(string $token, string $service, int $userId): bool
+    public function storeGitToken(string $token, string $service, string $url, string $description, int $userId): bool
     {
         $gitToken = $this->gitRepository->getTokenByToken($token);
         if ($gitToken !== null) {
             throw new \ErrorException('Token already exists',  409, E_USER_WARNING);
         }
 
-        $gitToken = new GitToken(null, $userId, $token, $service, false, null, null);
+        $gitToken = new GitToken(null, $userId, $token, $service, $url, $description, false, null, null);
         return $this->gitRepository->create($gitToken);
     }
 
@@ -41,6 +41,8 @@ class GitTokenService
                 'id' => $gitToken->getId(),
                 'token' => $token,
                 'service' => $gitToken->getService(),
+                'url' => $gitToken->getUrl(),
+                'description' => $gitToken->getDescription(),
                 'is_disabled' => $gitToken->isDisabled(),
                 'created_at' => $gitToken->getCreatedAt(),
                 'last_fetched_at' => $gitToken->getLastFetchedAt() ?? 'Never',

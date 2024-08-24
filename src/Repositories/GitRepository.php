@@ -151,7 +151,7 @@ class GitRepository
             return null;
         }
 
-        return new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['is_disabled'], $result['created_at'], $result['last_fetched_at']);
+        return new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], $result['is_disabled'], $result['created_at'], $result['last_fetched_at']);
     }
 
     public function create(GitToken $gitToken): bool
@@ -159,10 +159,14 @@ class GitRepository
         $userID = $gitToken->getUserId();
         $token = $gitToken->getToken();
         $service = $gitToken->getService();
-        $stmt = $this->db->prepare("INSERT INTO git_tokens (user_id, token, service) VALUES (:user_id, :token, :service)");
+        $url = $gitToken->getUrl();
+        $description = $gitToken->getDescription();
+        $stmt = $this->db->prepare("INSERT INTO git_tokens (user_id, token, service, url, description) VALUES (:user_id, :token, :service, :url, :description)");
         $stmt->bindParam(':user_id', $userID, PDO::PARAM_INT);
         $stmt->bindParam(':token', $token, PDO::PARAM_STR);
         $stmt->bindParam(':service', $service, PDO::PARAM_STR);
+        $stmt->bindParam(':url', $url, PDO::PARAM_STR);
+        $stmt->bindParam(':description', $description, PDO::PARAM_STR);
         $stmt->execute();
 
         return $stmt->rowCount() > 0;
@@ -203,7 +207,7 @@ class GitRepository
 
         $tokens = [];
         foreach ($results as $result) {
-            $tokens[] = new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['is_disabled'], $result['created_at'], $result['last_fetched_at']);
+            $tokens[] = new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], $result['is_disabled'], $result['created_at'], $result['last_fetched_at']);
         }
 
         return $tokens;
@@ -253,7 +257,7 @@ class GitRepository
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($result) {
-            return new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['is_disabled'], $result['created_at'], $result['last_fetched_at']);
+            return new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], $result['is_disabled'], $result['created_at'], $result['last_fetched_at']);
         }
 
         return null;
@@ -419,7 +423,7 @@ class GitRepository
             $sql .= " WHERE " . implode(" AND ", $conditions);
         }
 
-        $sql .= " ORDER BY c.date ASC";
+        $sql .= " ORDER BY c.date DESC";
 
         $stmt = $this->db->prepare($sql);
         if ($repoId != 0) {

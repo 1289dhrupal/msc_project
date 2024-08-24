@@ -33,9 +33,8 @@ foreach ($gitTokens as $gitToken) {
         continue;
     }
 
-
     // GitLab token and database credentials
-    $gitLabService->authenticate($gitToken['token']);
+    $gitLabService->authenticate($gitToken['token'], $gitToken['url']);
     $repositories = $gitLabService->fetchRepositories();
 
     foreach ($repositories as $repository) {

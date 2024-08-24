@@ -23,7 +23,7 @@ class GitTokenController
         global $userSession;
 
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
-        $input = array_merge(array('token' => '', 'service' => ''), $input);
+        $input = array_merge(array('token' => '', 'service' => 'github', 'url' => 'https://github.com', 'description' => ''), $input);
 
         if (empty($input['token']) || empty($input['service'])) {
             throw new \ErrorException('Token, and service are required', 400);
@@ -33,7 +33,11 @@ class GitTokenController
             throw new \ErrorException('Invalid service type', 400);
         }
 
-        $result = $this->gitTokenService->storeGitToken($input['token'], $input['service'], $userSession->getId());
+        if (!filter_var($input['url'], FILTER_VALIDATE_URL)) {
+            throw new \ErrorException('Invalid URL', 400);
+        }
+
+        $result = $this->gitTokenService->storeGitToken($input['token'], $input['service'], $input['url'], $input['description'], $userSession->getId());
         $response = new SuccessResponse('Git token stored successfully', $result, 201);
 
         return $response;
@@ -43,7 +47,7 @@ class GitTokenController
     {
         global $userSession;
 
-        $result = $this->gitTokenService->list($userSession->getId(), $mask = true);
+        $result = $this->gitTokenService->list($userSession->getId(), true);
         $response = new SuccessResponse('Git tokens retrieved successfully', $result);
 
         return $response;
