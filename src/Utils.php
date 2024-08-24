@@ -10,7 +10,8 @@ class Utils
     {
         // Find the position of the first occurrence of '_' or '-'
         $delimiterPosition = strcspn($token, '_-');
-        if ($delimiterPosition === false) {
+
+        if ($delimiterPosition === strlen($token)) {
             // If neither '_' nor '-' is found, return the original token
             return $token;
         }
