@@ -49,7 +49,7 @@ abstract class GitProviderService
             'url' => $repository->getUrl(),
             'description' => $repository->getDescription(),
             'owner' => $repository->getOwner(),
-            'is_disabled' => $repository->isDisabled(),
+            'is_active' => $repository->isActive(),
             'created_at' => $repository->getCreatedAt(),
             'last_fetched_at' => $repository->getLastFetchedAt()
         ];

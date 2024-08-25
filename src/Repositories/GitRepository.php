@@ -47,7 +47,7 @@ class GitRepository
                 $result['url'],
                 $result['description'],
                 $result['owner'],
-                (bool) $result['is_disabled'],
+                (bool) $result['is_active'],
                 $result['created_at'],
                 $result['last_fetched_at']
             );
@@ -151,7 +151,7 @@ class GitRepository
             return null;
         }
 
-        return new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], $result['is_disabled'], $result['created_at'], $result['last_fetched_at']);
+        return new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], $result['is_active'], $result['created_at'], $result['last_fetched_at']);
     }
 
     public function create(GitToken $gitToken): bool
@@ -207,7 +207,7 @@ class GitRepository
 
         $tokens = [];
         foreach ($results as $result) {
-            $tokens[] = new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], $result['is_disabled'], $result['created_at'], $result['last_fetched_at']);
+            $tokens[] = new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], $result['is_active'], $result['created_at'], $result['last_fetched_at']);
         }
 
         return $tokens;
@@ -226,14 +226,14 @@ class GitRepository
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function toggleToken(int $tokenId, bool $isDisabled, int $userId = 0): int
+    public function toggleToken(int $tokenId, bool $isActive, int $userId = 0): int
     {
-        $sql = "UPDATE git_tokens SET is_disabled = :is_disabled WHERE id = :id";
+        $sql = "UPDATE git_tokens SET is_active = :is_active WHERE id = :id";
         if ($userId != 0) {
             $sql .= " AND user_id = :user_id";
         }
         $stmt = $this->db->prepare($sql);
-        $stmt->bindParam(':is_disabled', $isDisabled, PDO::PARAM_BOOL);
+        $stmt->bindParam(':is_active', $isActive, PDO::PARAM_BOOL);
         $stmt->bindParam(':id', $tokenId, PDO::PARAM_INT);
         if ($userId != 0) {
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
@@ -257,7 +257,7 @@ class GitRepository
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($result) {
-            return new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], $result['is_disabled'], $result['created_at'], $result['last_fetched_at']);
+            return new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], $result['is_active'], $result['created_at'], $result['last_fetched_at']);
         }
 
         return null;
@@ -296,6 +296,8 @@ class GitRepository
         $sql = "SELECT r.*, token AS git_token FROM repositories AS r, git_tokens AS gt WHERE r.git_token_id = gt.id";
         if ($gitTokenId != 0) {
             $sql .= " AND git_token_id = :git_token_id";
+        } else {
+            $sql .= " AND gt.is_active = 1";
         }
         if ($repoIds != '') {
             $sql .= " AND FIND_IN_SET(r.id, :ids)";
@@ -327,7 +329,7 @@ class GitRepository
                 $result['url'],
                 $result['description'],
                 $result['owner'],
-                (bool) $result['is_disabled'],
+                (bool) $result['is_active'],
                 $result['created_at'],
                 $result['last_fetched_at']
             );
@@ -362,19 +364,19 @@ class GitRepository
             $result['url'],
             $result['description'],
             $result['owner'],
-            (bool) $result['is_disabled'],
+            (bool) $result['is_active'],
             $result['created_at'],
             $result['last_fetched_at']
         );
     }
-    public function toggleRepository(int $repoId, bool $isDisabled, int $userId = 0): int
+    public function toggleRepository(int $repoId, bool $isActive, int $userId = 0): int
     {
-        $sql = "UPDATE repositories SET is_disabled = :is_disabled WHERE id = :id";
+        $sql = "UPDATE repositories SET is_active = :is_active WHERE id = :id";
         if ($userId != 0) {
             $sql .= " AND (SELECT user_id FROM git_tokens WHERE id = git_token_id) = :user_id";
         }
         $stmt = $this->db->prepare($sql);
-        $stmt->bindParam(':is_disabled', $isDisabled, PDO::PARAM_BOOL);
+        $stmt->bindParam(':is_active', $isActive, PDO::PARAM_BOOL);
         $stmt->bindParam(':id', $repoId, PDO::PARAM_INT);
         if ($userId != 0) {
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
@@ -394,6 +396,7 @@ class GitRepository
         if ($userId != 0) {
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
         }
+        echo $stmt->queryString;
         $stmt->execute();
         return $stmt->rowCount();
     }
@@ -401,7 +404,7 @@ class GitRepository
     /**
      * @return Commit[]
      */
-    public function getCommits(int $repoId = 0, int $userId = 0): array
+    public function listCommits(int $repoId = 0, int $userId = 0): array
     {
         $sql = "SELECT c.* FROM commits c";
 
@@ -415,8 +418,8 @@ class GitRepository
             $sql .= " JOIN repositories r ON c.repository_id = r.id";
             $sql .= " JOIN git_tokens gt ON r.git_token_id = gt.id";
             $conditions[] = "gt.user_id = :user_id";
-            $conditions[] = "r.is_disabled = 0";
-            $conditions[] = "gt.is_disabled = 0";
+            $conditions[] = "r.is_active = 1";
+            $conditions[] = "gt.is_active = 1";
         }
 
         if (!empty($conditions)) {

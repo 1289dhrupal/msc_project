@@ -31,7 +31,7 @@ class GitService
                 'url' => $repo->getUrl(),
                 'description' => $repo->getDescription(),
                 'owner' => $repo->getOwner(),
-                'is_disabled' => $repo->isDisabled(),
+                'is_active' => $repo->isActive(),
                 'created_at' => $repo->getCreatedAt(),
                 'last_fetched_at' => $repo->getLastFetchedAt() ?? 'Never',
             ];
@@ -46,7 +46,7 @@ class GitService
             $gitTokens[$i] = [
                 'id' => $gitToken->getId(),
                 'user_id' => $gitToken->getUserId(),
-                'is_disabled' => $gitToken->isDisabled(),
+                'is_active' => $gitToken->isActive(),
                 'token' => $token,
             ];
         }
@@ -58,9 +58,9 @@ class GitService
         return $res;
     }
 
-    public function toggleRepository(int $repoId, bool $isDisabled, int $userId = 0): void
+    public function toggleRepository(int $repoId, bool $isActive, int $userId = 0): void
     {
-        $this->gitRepository->toggleRepository($repoId, $isDisabled, $userId);
+        $this->gitRepository->toggleRepository($repoId, $isActive, $userId);
     }
 
     public function deleteRepository(int $repoId, int $userId = 0): void
@@ -73,14 +73,14 @@ class GitService
         }
     }
 
-    public function getCommits(int $repoId = 0, int $userId = 0): array
+    public function listCommits(int $repoId = 0, int $userId = 0): array
     {
         $repo = $this->gitRepository->getRepositoryById($repoId, $userId);
         if ($repo === null) {
             throw new Exception('Repository not found');
         }
 
-        $commits = $this->gitRepository->getCommits($repoId, $userId);
+        $commits = $this->gitRepository->listCommits($repoId, $userId);
 
         $commitResponse = [];
         foreach ($commits as $i => $commit) {
@@ -112,7 +112,7 @@ class GitService
                 'name' => $repoId->getName(),
                 'url' => $repoId->getUrl(),
                 'owner' => $repoId->getOwner(),
-                'is_disabled' => $repoId->isDisabled(),
+                'is_active' => $repoId->isActive(),
             ];
         }
 

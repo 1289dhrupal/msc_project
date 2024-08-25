@@ -12,11 +12,11 @@ class GitToken
     private string $service;
     private string $url;
     private string $description;
-    private bool $isDisabled;
+    private bool $isActive;
     private ?string $createdAt;
     private ?string $lastFetchedAt;
 
-    public function __construct(?int $id, int $userId, string $token, string $service, string $url, string $description, bool $isDisabled, ?string $createdAt, ?string $lastFetchedAt)
+    public function __construct(?int $id, int $userId, string $token, string $service, string $url, string $description, bool $isActive, ?string $createdAt, ?string $lastFetchedAt)
     {
         $this->id = $id;
         $this->userId = $userId;
@@ -24,7 +24,7 @@ class GitToken
         $this->service = $service;
         $this->url = $url;
         $this->description = $description;
-        $this->isDisabled = $isDisabled;
+        $this->isActive = $isActive;
         $this->createdAt = $createdAt;
         $this->lastFetchedAt = $lastFetchedAt;
     }
@@ -59,9 +59,9 @@ class GitToken
         return $this->description;
     }
 
-    public function isDisabled(): bool
+    public function isActive(): bool
     {
-        return $this->isDisabled;
+        return $this->isActive;
     }
 
     public function getCreatedAt(): ?string

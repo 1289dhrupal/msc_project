@@ -50,7 +50,7 @@ class GithubService extends GitProviderService
 
     public function storeRepository(array $repository, int $gitTokenId): int
     {
-        $repositoryId = $this->gitRepository->storeRepository($gitTokenId, $repository['name'], $repository['html_url'], $repository['description'] ?? 'No description', $repository['owner']['login']);
+        $repositoryId = $this->gitRepository->storeRepository($gitTokenId, $repository['name'], $repository['html_url'], $repository['description'] ?? '', $repository['owner']['login']);
         return $repositoryId;
     }
 

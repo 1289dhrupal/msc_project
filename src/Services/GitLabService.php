@@ -57,7 +57,7 @@ class GitLabService extends GitProviderService
 
     public function storeRepository(array $repository, int $gitTokenId): int
     {
-        $repositoryId = $this->gitRepository->storeRepository($gitTokenId, $repository['name'], $repository['web_url'], $repository['description'] ?? 'No description', $repository['owner']['username']);
+        $repositoryId = $this->gitRepository->storeRepository($gitTokenId, $repository['name'], $repository['web_url'], $repository['description'] ?? '', $repository['owner']['username']);
         return $repositoryId;
     }
 

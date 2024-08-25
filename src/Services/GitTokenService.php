@@ -43,7 +43,7 @@ class GitTokenService
                 'service' => $gitToken->getService(),
                 'url' => $gitToken->getUrl(),
                 'description' => $gitToken->getDescription(),
-                'is_disabled' => $gitToken->isDisabled(),
+                'is_active' => $gitToken->isActive(),
                 'created_at' => $gitToken->getCreatedAt(),
                 'last_fetched_at' => $gitToken->getLastFetchedAt() ?? 'Never',
             ];
@@ -51,9 +51,9 @@ class GitTokenService
         return $res;
     }
 
-    public function toggle(int $tokenId, bool $isDisabled, int $userId = 0): void
+    public function toggle(int $tokenId, bool $isActive, int $userId = 0): void
     {
-        $this->gitRepository->toggleToken($tokenId, $isDisabled, $userId);
+        $this->gitRepository->toggleToken($tokenId, $isActive, $userId);
     }
 
     public function delete(int $tokenId, int $userId = 0): void

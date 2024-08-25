@@ -29,7 +29,7 @@ $gitTokens = $githubService->fetchGitTokens();
 
 foreach ($gitTokens as $gitToken) {
 
-    if ($gitToken['is_disabled']) {
+    if (!$gitToken['is_active']) {
         continue;
     }
 
@@ -40,7 +40,7 @@ foreach ($gitTokens as $gitToken) {
     foreach ($repositories as $repository) {
         $repo = $githubService->getRepository($gitToken['id'], $repository['owner']['login'], $repository['name']);
 
-        if ($repo && $repo['is_disabled']) {
+        if ($repo && !$repo['is_active']) {
             continue;
         }
 

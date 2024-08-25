@@ -37,11 +37,11 @@ class GitController
         global $userSession;
 
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
-        $input = array_merge(['is_disabled' => false], $input);
+        $input = array_merge(['is_active' => true], $input);
 
         try {
-            $isDisabled = filter_var($input['is_disabled'], FILTER_VALIDATE_BOOLEAN);
-            $this->gitService->toggleRepository($repositoryId, $isDisabled, $userSession->getId());
+            $isActive = filter_var($input['is_active'], FILTER_VALIDATE_BOOLEAN);
+            $this->gitService->toggleRepository($repositoryId, $isActive, $userSession->getId());
             return new SuccessResponse("Updated the status for token ID: $repositoryId");
         } catch (Exception $e) {
             throw new \ErrorException('Failed to toggle repository', 400, E_USER_WARNING);
@@ -59,11 +59,11 @@ class GitController
         }
     }
 
-    public function getCommits(int $repositoryId = 0): Response
+    public function listCommits(int $repositoryId = 0): Response
     {
         try {
             global $userSession;
-            $commits = $this->gitService->getCommits($repositoryId, $userSession->getId());
+            $commits = $this->gitService->listCommits($repositoryId, $userSession->getId());
             return new SuccessResponse("Successfully Fetched Commits", $commits);
         } catch (Exception $e) {
             throw new \ErrorException('Failed to fetch commits', 400, E_USER_WARNING);

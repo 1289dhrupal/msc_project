@@ -25,7 +25,7 @@ class DashboardController
         global $userSession;
 
         $repoID = intval($_GET['repository_id'] ?? 0);
-        $commits = $this->gitRepository->getCommits($repoID, $userSession->getId());
+        $commits = $this->gitRepository->listCommits($repoID, $userSession->getId());
         $response = [];
 
         foreach ($commits as $commit) {

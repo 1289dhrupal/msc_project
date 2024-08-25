@@ -58,9 +58,9 @@ class GitTokenController
         global $userSession;
 
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
-        $input = array_merge(['is_disabled' => false], $input);
-        $isDisabled = filter_var($input['is_disabled'], FILTER_VALIDATE_BOOLEAN);
-        $this->gitTokenService->toggle($tokenId, $isDisabled, $userSession->getId());
+        $input = array_merge(['is_active' => true], $input);
+        $isActive = filter_var($input['is_active'], FILTER_VALIDATE_BOOLEAN);
+        $this->gitTokenService->toggle($tokenId, $isActive, $userSession->getId());
         $response = new SuccessResponse("Updated the status for token ID: $tokenId");
 
         return $response;

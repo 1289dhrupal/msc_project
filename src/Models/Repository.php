@@ -12,7 +12,7 @@ class Repository
     private string $url;
     private ?string $description;
     private string $owner;
-    private bool $isDisabled;
+    private bool $isActive;
     private string $createdAt;
     private ?string $lastFetchedAt;
 
@@ -23,7 +23,7 @@ class Repository
         string $url,
         ?string $description,
         string $owner,
-        bool $isDisabled,
+        bool $isActive,
         string $createdAt,
         ?string $lastFetchedAt
     ) {
@@ -33,7 +33,7 @@ class Repository
         $this->url = $url;
         $this->description = $description;
         $this->owner = $owner;
-        $this->isDisabled = $isDisabled;
+        $this->isActive = $isActive;
         $this->createdAt = $createdAt;
         $this->lastFetchedAt = $lastFetchedAt;
     }
@@ -68,9 +68,9 @@ class Repository
         return $this->owner;
     }
 
-    public function isDisabled(): bool
+    public function isActive(): bool
     {
-        return $this->isDisabled;
+        return $this->isActive;
     }
 
     public function getCreatedAt(): string
