@@ -44,7 +44,13 @@ foreach ($gitTokens as $gitToken) {
             continue;
         }
 
-        $repositoryId = $repo['id'] ?? $gitLabService->storeRepository($repository, $gitToken['id']);
+        $repositoryId = $repo['id'] ?? 0;
+        if (!$repositoryId) {
+            $hook = $gitLabService->createWebhook($repository['path_with_namespace'], array('push_events'), $repository['default_branch']);
+            $repositoryId = $gitLabService->storeRepository($repository, $gitToken['id'], $hook['id']);
+            $gitLabService->updateWebhookStatus($repository['path_with_namespace'], $hook['id'], array('push_events' => true), $repositoryId);
+        }
+
         $commits = $gitLabService->fetchCommits($repository['path_with_namespace']);
 
         foreach ($commits as $commit) {

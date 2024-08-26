@@ -30,7 +30,7 @@ abstract class GitProviderService
 
     abstract protected function fetchRepositories(): array;
 
-    abstract protected function fetchCommits(string $repoName): array;
+    abstract protected function fetchCommits(string $repoName, string $branch): array;
 
     abstract protected function fetchCommitDetails(string $sha, string $repoName): array;
 
@@ -49,6 +49,8 @@ abstract class GitProviderService
             'url' => $repository->getUrl(),
             'description' => $repository->getDescription(),
             'owner' => $repository->getOwner(),
+            'default_branch' => $repository->getDefaultBranch(),
+            'hook_id' => $repository->getHookId(),
             'is_active' => $repository->isActive(),
             'created_at' => $repository->getCreatedAt(),
             'last_fetched_at' => $repository->getLastFetchedAt()
@@ -80,5 +82,20 @@ abstract class GitProviderService
     public function updateRepositoryFetchedAt(int $repositoryId): void
     {
         $this->gitRepository->updateRepositoryFetchedAt($repositoryId);
+    }
+
+    abstract protected function storeRepository(array $repository, int $gitTokenId, int $hookId): int;
+
+    abstract protected function storeCommit(array $commit, array $commitDetails, int $repositoryId): int;
+
+    abstract protected function createWebhook(string $repoName, array $events, string $defaultBranch): array;
+
+    abstract protected function updateWebhookStatus(string $repoName, int $hookId, array $active): array;
+
+    abstract protected function handleEvent(string $event, int $hookId, array $data): void;
+
+    public function handlePushEvent($repository, $gitToken, $data)
+    {
+        // TODO: Implement handlePushEvent() method.
     }
 }

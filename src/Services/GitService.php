@@ -31,6 +31,8 @@ class GitService
                 'url' => $repo->getUrl(),
                 'description' => $repo->getDescription(),
                 'owner' => $repo->getOwner(),
+                'default_branch' => $repo->getDefaultBranch(),
+                'hook_id' => $repo->getHookId(),
                 'is_active' => $repo->isActive(),
                 'created_at' => $repo->getCreatedAt(),
                 'last_fetched_at' => $repo->getLastFetchedAt() ?? 'Never',
@@ -112,6 +114,8 @@ class GitService
                 'name' => $repoId->getName(),
                 'url' => $repoId->getUrl(),
                 'owner' => $repoId->getOwner(),
+                'default_branch' => $repoId->getDefaultBranch(),
+                'hook_id' => $repoId->getHookId(),
                 'is_active' => $repoId->isActive(),
             ];
         }

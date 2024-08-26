@@ -44,7 +44,12 @@ foreach ($gitTokens as $gitToken) {
             continue;
         }
 
-        $repositoryId = $repo['id'] ?? $githubService->storeRepository($repository, $gitToken['id']);
+        $repositoryId = $repo['id'] ?? 0;
+        if (!$repositoryId) {
+            $hook = $_ENV == 'dev' ? -1 : $githubService->createWebhook($repository['name']);
+            $repositoryId = $githubService->storeRepository($repository, $gitToken['id'], $hook['id']);
+        }
+
         $commits = $githubService->fetchCommits($repository['name']);
 
         foreach ($commits as $commit) {

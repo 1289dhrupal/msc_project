@@ -12,6 +12,8 @@ class Repository
     private string $url;
     private ?string $description;
     private string $owner;
+    private string $defaultBranch;
+    private int $hookId;
     private bool $isActive;
     private string $createdAt;
     private ?string $lastFetchedAt;
@@ -23,6 +25,8 @@ class Repository
         string $url,
         ?string $description,
         string $owner,
+        string $defaultBranch,
+        int $hookId,
         bool $isActive,
         string $createdAt,
         ?string $lastFetchedAt
@@ -33,6 +37,8 @@ class Repository
         $this->url = $url;
         $this->description = $description;
         $this->owner = $owner;
+        $this->defaultBranch = $defaultBranch;
+        $this->hookId = $hookId;
         $this->isActive = $isActive;
         $this->createdAt = $createdAt;
         $this->lastFetchedAt = $lastFetchedAt;
@@ -66,6 +72,16 @@ class Repository
     public function getOwner(): string
     {
         return $this->owner;
+    }
+
+    public function getDefaultBranch(): string
+    {
+        return $this->defaultBranch;
+    }
+
+    public function getHookId(): int
+    {
+        return $this->hookId;
     }
 
     public function isActive(): bool

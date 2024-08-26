@@ -1,0 +1,81 @@
+{
+  "object_kind": "push",
+  "event_name": "push",
+  "before": "a282a96dd874727ba047004328522b8e08c9df7f",
+  "after": "7a0740b56cb04f0345efb0719fd9e70e9af19f62",
+  "ref": "refs/heads/main",
+  "ref_protected": true,
+  "checkout_sha": "7a0740b56cb04f0345efb0719fd9e70e9af19f62",
+  "message": null,
+  "user_id": 1762,
+  "user_name": "D P Shah",
+  "user_username": "dps30",
+  "user_email": null,
+  "user_avatar": "https://secure.gravatar.com/avatar/9d6ac3cae5baf1025a23ef01070f530a9216058ec3c61adcb657fa7571f2fec7?s=80&amp;d=identicon",
+  "project_id": 3727,
+  "project": {
+    "id": 3727,
+    "name": "msc-project",
+    "description": "This is a sample project for msc integration",
+    "web_url": "https://campus.cs.le.ac.uk/gitlab/dps30/msc-project",
+    "avatar_url": null,
+    "git_ssh_url": "git@campus.cs.le.ac.uk:dps30/msc-project.git",
+    "git_http_url": "https://campus.cs.le.ac.uk/gitlab/dps30/msc-project.git",
+    "namespace": "D P Shah",
+    "visibility_level": 0,
+    "path_with_namespace": "dps30/msc-project",
+    "default_branch": "main",
+    "ci_config_path": null,
+    "homepage": "https://campus.cs.le.ac.uk/gitlab/dps30/msc-project",
+    "url": "git@campus.cs.le.ac.uk:dps30/msc-project.git",
+    "ssh_url": "git@campus.cs.le.ac.uk:dps30/msc-project.git",
+    "http_url": "https://campus.cs.le.ac.uk/gitlab/dps30/msc-project.git"
+  },
+  "commits": [
+    {
+      "id": "7a0740b56cb04f0345efb0719fd9e70e9af19f62",
+      "message": "Added sample php file",
+      "title": "Added sample php file",
+      "timestamp": "2024-08-22T04:49:29+00:00",
+      "url": "https://campus.cs.le.ac.uk/gitlab/dps30/msc-project/-/commit/7a0740b56cb04f0345efb0719fd9e70e9af19f62",
+      "author": {
+        "name": "D P Shah",
+        "email": "dps30@student.le.ac.uk"
+      },
+      "added": [
+        "index.php"
+      ],
+      "modified": [
+        "README.md"
+      ],
+      "removed": []
+    },
+    {
+      "id": "a282a96dd874727ba047004328522b8e08c9df7f",
+      "message": "Added README.md",
+      "title": "Added README.md",
+      "timestamp": "2024-08-22T04:11:02+00:00",
+      "url": "https://campus.cs.le.ac.uk/gitlab/dps30/msc-project/-/commit/a282a96dd874727ba047004328522b8e08c9df7f",
+      "author": {
+        "name": "D P Shah",
+        "email": "dps30@student.le.ac.uk"
+      },
+      "added": [
+        "README.md"
+      ],
+      "modified": [],
+      "removed": []
+    }
+  ],
+  "total_commits_count": 2,
+  "push_options": {},
+  "repository": {
+    "name": "msc-project",
+    "url": "git@campus.cs.le.ac.uk:dps30/msc-project.git",
+    "description": "This is a sample project for msc integration",
+    "homepage": "https://campus.cs.le.ac.uk/gitlab/dps30/msc-project",
+    "git_http_url": "https://campus.cs.le.ac.uk/gitlab/dps30/msc-project.git",
+    "git_ssh_url": "git@campus.cs.le.ac.uk:dps30/msc-project.git",
+    "visibility_level": 0
+  }
+}

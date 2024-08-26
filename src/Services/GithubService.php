@@ -6,8 +6,11 @@ namespace MscProject\Services;
 
 require 'vendor/autoload.php';
 
+use ErrorException;
 use Github\Client;
 use Github\AuthMethod;
+use MscProject\Models\GitToken;
+use MscProject\Models\Repository;
 use MscProject\Repositories\GitRepository;
 
 class GithubService extends GitProviderService
@@ -38,7 +41,7 @@ class GithubService extends GitProviderService
         return $this->client->user()->repositories($this->username);
     }
 
-    public function fetchCommits(string $repoName): array
+    public function fetchCommits(string $repoName, string $branch = 'main'): array
     {
         return $this->client->repo()->commits()->all($this->username, $repoName, []);
     }
@@ -48,9 +51,9 @@ class GithubService extends GitProviderService
         return $this->client->repo()->commits()->show($this->username, $repoName, $sha);
     }
 
-    public function storeRepository(array $repository, int $gitTokenId): int
+    public function storeRepository(array $repository, int $gitTokenId, int $hookId): int
     {
-        $repositoryId = $this->gitRepository->storeRepository($gitTokenId, $repository['name'], $repository['html_url'], $repository['description'] ?? '', $repository['owner']['login']);
+        $repositoryId = $this->gitRepository->storeRepository($gitTokenId, $repository['name'], $repository['html_url'], $repository['description'] ?? '', $repository['owner']['login'], $repository['default_branch'], $hookId);
         return $repositoryId;
     }
 
@@ -70,5 +73,70 @@ class GithubService extends GitProviderService
         );
 
         return $commitId;
+    }
+
+    public function createWebhook(string $repoName, array $events = array('push'), string $defaultBranch = 'main'): array
+    {
+        $hookData = [
+            'name' => 'web',
+            'active' => true,
+            'events' => $events,
+            'config' => [
+                'url' => $_ENV['BASE_URL'] . $_ENV['GITHUB_WEBHOOK_RESPONSE_URL'],
+                'content_type' => 'json',
+                'insecure_ssl' => '1',
+            ],
+        ];
+
+        if ($_ENV['ENV'] == 'dev') {
+            $hookData['config']['url'] = $_ENV['DEV_GITHUB_WEBHOOK_RESPONSE_URL'];
+        }
+
+        return $this->client->repo()->hooks()->create($this->username, $repoName, $hookData);
+    }
+
+    public function updateWebhookStatus(string $repoName, int $hookId, array $data = []): array
+    {
+        $hookData = [
+            'active' => $data['active'] ?? false,
+            'config' => [
+                'url' => $_ENV['BASE_URL'] . $_ENV['GITHUB_WEBHOOK_RESPONSE_URL'],
+            ],
+        ];
+
+        var_dump($hookData['active']);
+        if (isset($data['events'])) {
+            $hookData['events'] = $data['events'];
+        }
+
+        if ($_ENV['ENV'] == 'dev') {
+            $hookData['config']['url'] = $_ENV['DEV_GITHUB_WEBHOOK_RESPONSE_URL'];
+        }
+
+        $hookData['config']['url'] = $_ENV['DEV_GITHUB_WEBHOOK_RESPONSE_URL'];
+
+        return $this->client->repo()->hooks()->update($this->username, $repoName, $hookId, $hookData);
+    }
+
+    public function handleEvent(string $event, int $hookId, array $data): void
+    {
+        $repository = $this->gitRepository->getRepositoryByHookId($hookId);
+        if (!$repository || !$repository->isActive()) {
+            throw new ErrorException("Repository is not active.");
+        }
+
+        $gitToken = $this->gitRepository->getToken($repository['git_token_id']);
+        if (!$gitToken || !$gitToken->isActive()) {
+            throw new ErrorException("Token is not active.");
+        }
+
+        switch ($event) {
+            case 'push':
+                parent::handlePushEvent($repository, $gitToken, $data);
+                break;
+            default:
+                throw new ErrorException("Event not supported.");
+                break;
+        }
     }
 }

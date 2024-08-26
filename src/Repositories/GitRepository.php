@@ -17,14 +17,16 @@ class GitRepository
         $this->db = Database::getInstance()->getConnection();
     }
 
-    public function storeRepository(int $gitTokenId, string $name, string $url, ?string $description, string $owner): int
+    public function storeRepository(int $gitTokenId, string $name, string $url, ?string $description, string $owner, string $defaultBranch, int $hookId): int
     {
-        $stmt = $this->db->prepare("INSERT INTO repositories (git_token_id, name, url, description, owner) VALUES (:git_token_id, :name, :url, :description, :owner)");
+        $stmt = $this->db->prepare("INSERT INTO repositories (git_token_id, name, url, description, owner, default_branch, hook_id) VALUES (:git_token_id, :name, :url, :description, :owner, :default_branch, :hook_id)");
         $stmt->bindParam(':git_token_id', $gitTokenId, PDO::PARAM_INT);
         $stmt->bindParam(':name', $name, PDO::PARAM_STR);
         $stmt->bindParam(':url', $url, PDO::PARAM_STR);
         $stmt->bindParam(':description', $description, PDO::PARAM_STR);
         $stmt->bindParam(':owner', $owner, PDO::PARAM_STR);
+        $stmt->bindParam(':default_branch', $defaultBranch, PDO::PARAM_STR);
+        $stmt->bindParam(':hook_id', $hookId, PDO::PARAM_INT);
         $stmt->execute();
 
         return (int)$this->db->lastInsertId();
@@ -47,6 +49,8 @@ class GitRepository
                 $result['url'],
                 $result['description'],
                 $result['owner'],
+                $result['default_branch'],
+                (int) $result['hook_id'],
                 (bool) $result['is_active'],
                 $result['created_at'],
                 $result['last_fetched_at']
@@ -329,6 +333,8 @@ class GitRepository
                 $result['url'],
                 $result['description'],
                 $result['owner'],
+                $result['default_branch'],
+                (int) $result['hook_id'],
                 (bool) $result['is_active'],
                 $result['created_at'],
                 $result['last_fetched_at']
@@ -364,6 +370,8 @@ class GitRepository
             $result['url'],
             $result['description'],
             $result['owner'],
+            $result['default_branch'],
+            (int) $result['hook_id'],
             (bool) $result['is_active'],
             $result['created_at'],
             $result['last_fetched_at']
@@ -396,7 +404,7 @@ class GitRepository
         if ($userId != 0) {
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
         }
-        echo $stmt->queryString;
+
         $stmt->execute();
         return $stmt->rowCount();
     }
@@ -497,5 +505,31 @@ class GitRepository
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return $result['files'];
+    }
+
+    public function getRepositoryByHookId(int $hookId): ?Repository
+    {
+        $stmt = $this->db->prepare("SELECT * FROM repositories WHERE hook_id = :hook_id");
+        $stmt->bindParam(':hook_id', $hookId, PDO::PARAM_INT);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($result) {
+            return new Repository(
+                (int) $result['id'],
+                (int) $result['git_token_id'],
+                $result['name'],
+                $result['url'],
+                $result['description'],
+                $result['owner'],
+                $result['default_branch'],
+                (int) $result['hook_id'],
+                (bool) $result['is_active'],
+                $result['created_at'],
+                $result['last_fetched_at']
+            );
+        }
+
+        return null;
     }
 }
