@@ -128,17 +128,22 @@ class GitLabService extends GitProviderService
     {
         $repository = $this->gitRepository->getRepositoryById($repoId);
         if (!$repository || !$repository->isActive()) {
-            throw new ErrorException("Repository is not active.");
+            throw new ErrorException("Repository is not active.", 200);
         }
 
         $gitToken = $this->gitRepository->getToken($repository['git_token_id']);
         if (!$gitToken || !$gitToken->isActive()) {
-            throw new ErrorException("Token is not active.");
+            throw new ErrorException("Token is not active.", 200);
+        }
+
+        $currentBranch = explode('/', $data['ref'])[2] ?? '';
+        if ($repository->getDefaultBranch() !== $currentBranch) {
+            throw new ErrorException("Tracking branch does not match.", 200);
         }
 
         switch ($event) {
             case 'Push Hook':
-                parent::handlePushEvent($repository, $gitToken, $data);
+                parent::handlePushEvent($repository, $gitToken, $data['project']['path_with_namespace']);
                 break;
             default:
                 break;

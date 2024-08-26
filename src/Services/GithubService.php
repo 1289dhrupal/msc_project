@@ -120,20 +120,25 @@ class GithubService extends GitProviderService
     {
         $repository = $this->gitRepository->getRepositoryByHookId($hookId);
         if (!$repository || !$repository->isActive()) {
-            throw new ErrorException("Repository is not active.");
+            throw new ErrorException("Repository is not active.", 200);
         }
 
         $gitToken = $this->gitRepository->getToken($repository['git_token_id']);
         if (!$gitToken || !$gitToken->isActive()) {
-            throw new ErrorException("Token is not active.");
+            throw new ErrorException("Token is not active.", 200);
+        }
+
+        $currentBranch = explode('/', $data['ref'])[2] ?? '';
+        if ($repository->getDefaultBranch() !== $currentBranch) {
+            throw new ErrorException("Tracking branch does not match.", 200);
         }
 
         switch ($event) {
             case 'push':
-                parent::handlePushEvent($repository, $gitToken, $data);
+                parent::handlePushEvent($repository, $gitToken, $data['repository']['owner']['login']);
                 break;
             default:
-                throw new ErrorException("Event not supported.");
+                throw new ErrorException("Event not supported.", 200);
                 break;
         }
     }

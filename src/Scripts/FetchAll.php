@@ -19,12 +19,18 @@ $dotenv->load();
 /**
  * @var GitHubService
  */
-$gitService = Orchestrator::getInstance()->get(GithubService::class);
-$gitService->fetchAll();
-
+$githubService = Orchestrator::getInstance()->get(GithubService::class);
 
 /**
  * @var GitLabService
  */
-$gitService = Orchestrator::getInstance()->get(GitLabService::class);
+$gitlabService = Orchestrator::getInstance()->get(GitLabService::class);
+
 $gitService->fetchAll();
+
+$stats[] = [
+    'github' => $githubService->fetchAll(),
+    'gitlab' => $gitlabService->fetchAll(),
+];
+
+echo json_encode($stats);

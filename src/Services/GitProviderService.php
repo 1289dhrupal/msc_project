@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace MscProject\Services;
 
 use Exception;
+use MscProject\Models\GitToken;
+use MscProject\Models\Repository;
 use MscProject\Repositories\GitRepository;
 use MscProject\Services\GitTokenService;
 
@@ -15,6 +17,7 @@ abstract class GitProviderService
     protected GitRepository $gitRepository;
     protected GitTokenService $gitTokenService;
     protected GitAnalysisService $gitAnalysisService;
+
     public function __construct(GitTokenService $gitTokenService, GitRepository $gitRepository, GitAnalysisService $gitAnalysisService, string $service)
     {
         $this->gitRepository = $gitRepository;
@@ -171,10 +174,32 @@ abstract class GitProviderService
 
             $this->updateTokenFetchedAt($gitToken['id']);
         }
+
+        // TODO: Send email
+        // $this->sendEmail($repository, $gitToken, $commitDetails);
     }
 
-    public function handlePushEvent($repository, $gitToken, $data)
+    public function handlePushEvent(Repository $repository, GitToken $gitToken, string $repoPath): void
     {
-        // TODO: Implement handlePushEvent() method.
+        $gitTokenId = $gitToken->getId();
+        $repositoryId = $repository->getId();
+        $defaultBranch = $repository->getDefaultBranch();
+
+        $commits = $this->fetchCommits($repoPath, $defaultBranch);
+        foreach ($commits as $commit) {
+            $commitIdentifier = $this->getCommitIdentifier($commit);
+            if (!$this->getCommit($repositoryId, $commitIdentifier)) {
+                $commitDetails = $this->fetchCommitDetails($commitIdentifier, $repoPath);
+                $commitDetails = $this->processCommit($commit, $commitDetails);
+                $this->storeCommit($commit, $commitDetails, $repositoryId);
+            }
+        }
+
+        $this->updateRepositoryFetchedAt($repositoryId);
+
+        $this->updateTokenFetchedAt($gitTokenId);
+
+        // TODO: Send email
+        // $this->sendEmail($repository, $gitToken, $commitDetails);
     }
 }
