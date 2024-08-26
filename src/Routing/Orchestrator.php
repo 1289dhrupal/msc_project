@@ -11,6 +11,7 @@ use MscProject\Controllers\UserController;
 use MscProject\Controllers\GitTokenController;
 use MscProject\Controllers\GitController;
 use MscProject\Services\UserService;
+use MscProject\Controllers\WebhookController;
 use MscProject\Services\GitTokenService;
 use MscProject\Services\GitHubService;
 use MscProject\Services\ActivityService;
@@ -94,9 +95,15 @@ class Orchestrator
     {
         return self::get(GitTokenController::class);
     }
+
     public static function getDashboardController(): DashboardController
     {
         return self::get(DashboardController::class);
+    }
+
+    public static function getWebHookController(): WebhookController
+    {
+        return self::get(WebHookController::class);
     }
 
     public static function getUserService(): UserService

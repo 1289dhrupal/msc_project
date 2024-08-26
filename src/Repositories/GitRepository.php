@@ -144,6 +144,13 @@ class GitRepository
         $stmt->execute();
     }
 
+    public function updateTokenFetchedAt(int $gitTokenId): void
+    {
+        $stmt = $this->db->prepare("UPDATE git_tokens SET last_fetched_at = CURRENT_TIMESTAMP WHERE id = :id");
+        $stmt->bindParam(':id', $gitTokenId, PDO::PARAM_INT);
+        $stmt->execute();
+    }
+
     public function getTokenByToken(string $token): ?GitToken
     {
         $stmt = $this->db->prepare("SELECT * FROM git_tokens WHERE token = :token");

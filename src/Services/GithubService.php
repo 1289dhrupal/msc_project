@@ -9,8 +9,6 @@ require 'vendor/autoload.php';
 use ErrorException;
 use Github\Client;
 use Github\AuthMethod;
-use MscProject\Models\GitToken;
-use MscProject\Models\Repository;
 use MscProject\Repositories\GitRepository;
 
 class GithubService extends GitProviderService
@@ -18,13 +16,13 @@ class GithubService extends GitProviderService
     private Client $client;
     private const SERVICE = 'github';
 
-    public function __construct(GitTokenService $gitTokenService, GitRepository $gitRepository)
+    public function __construct(GitTokenService $gitTokenService, GitRepository $gitRepository, GitAnalysisService $gitAnalysisService)
     {
         $this->client = new Client();
-        parent::__construct($gitTokenService, $gitRepository, self::SERVICE);
+        parent::__construct($gitTokenService, $gitRepository, $gitAnalysisService, self::SERVICE);
     }
 
-    public function authenticate(string $githubToken): void
+    public function authenticate(string $githubToken, string $url = null): void
     {
         $this->client->authenticate($githubToken, AuthMethod::ACCESS_TOKEN);
         $this->username = $this->fetchUsername();
@@ -75,12 +73,12 @@ class GithubService extends GitProviderService
         return $commitId;
     }
 
-    public function createWebhook(string $repoName, array $events = array('push'), string $defaultBranch = 'main'): array
+    public function createWebhook(string $repoName, string $defaultBranch = null): array
     {
         $hookData = [
             'name' => 'web',
             'active' => true,
-            'events' => $events,
+            'events' => ['push'],
             'config' => [
                 'url' => $_ENV['BASE_URL'] . $_ENV['GITHUB_WEBHOOK_RESPONSE_URL'],
                 'content_type' => 'json',
@@ -95,19 +93,19 @@ class GithubService extends GitProviderService
         return $this->client->repo()->hooks()->create($this->username, $repoName, $hookData);
     }
 
-    public function updateWebhookStatus(string $repoName, int $hookId, array $data = []): array
+    public function listWebhooks(string $repoName): array
+    {
+        return $this->client->repo()->hooks()->all($this->username, $repoName);
+    }
+
+    public function updateWebhookStatus(string $repoName, int $hookId, bool $status = false, $repositoryId = 0): array
     {
         $hookData = [
-            'active' => $data['active'] ?? false,
+            'active' => $status,
             'config' => [
                 'url' => $_ENV['BASE_URL'] . $_ENV['GITHUB_WEBHOOK_RESPONSE_URL'],
             ],
         ];
-
-        var_dump($hookData['active']);
-        if (isset($data['events'])) {
-            $hookData['events'] = $data['events'];
-        }
 
         if ($_ENV['ENV'] == 'dev') {
             $hookData['config']['url'] = $_ENV['DEV_GITHUB_WEBHOOK_RESPONSE_URL'];
@@ -138,5 +136,47 @@ class GithubService extends GitProviderService
                 throw new ErrorException("Event not supported.");
                 break;
         }
+    }
+
+    public function getRepositoryOwner(array $repository): string
+    {
+        return $repository['owner']['login'];
+    }
+
+    public function getRepositoryPath(array $repository): string
+    {
+        return $repository['name'];
+    }
+
+    public function getCommitIdentifier(array $commit): string
+    {
+        return $commit['sha'];
+    }
+
+    public function processCommit(array $commit, array $commitDetails): array
+    {
+        $commitDetails['files'] = array_map(fn($row) => [
+            'sha' => substr($row['sha'], 0, 7),
+            'filename' => $row['filename'],
+            'status' => $row['status'],
+            'additions' => $row['additions'],
+            'deletions' => $row['deletions'],
+            'changes' => $row['changes'],
+            'patch' => $row['patch'] ?? null,
+        ], $commitDetails['files']);
+
+        $commitAnalysis = $this->gitAnalysisService->analyzeCommit($commitDetails['files'], $commitDetails['commit']['message']);
+        $commitDetails['files'] = ["files" => $commitAnalysis['files'], "stats" => array_merge($commitDetails['stats'], $commitAnalysis['stats'])];
+
+        $commitDetails['files']["files"] = array_map(fn($row) => [
+            'sha' => substr($row['sha'], 0, 7),
+            'filename' => $row['filename'],
+            'status' => $row['status'],
+            'additions' => $row['additions'],
+            'deletions' => $row['deletions'],
+            'changes' => $row['changes'],
+        ], $commitDetails['files']["files"]);
+
+        return $commitDetails;
     }
 }

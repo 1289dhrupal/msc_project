@@ -65,4 +65,9 @@ class GitTokenService
             $this->gitRepository->deleteToken($tokenId, $userId);
         }
     }
+
+    public function updateFetchedAt(int $tokenId): void
+    {
+        $this->gitRepository->updateTokenFetchedAt($tokenId);
+    }
 }

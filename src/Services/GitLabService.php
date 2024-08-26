@@ -16,9 +16,9 @@ class GitLabService extends GitProviderService
     private string $gitToken;
     private const SERVICE = 'gitlab';
 
-    public function __construct(GitRepository $gitRepository, GitTokenService $gitTokenService)
+    public function __construct(GitRepository $gitRepository, GitTokenService $gitTokenService, GitAnalysisService $gitAnalysisService)
     {
-        parent::__construct($gitTokenService, $gitRepository, self::SERVICE);
+        parent::__construct($gitTokenService, $gitRepository, $gitAnalysisService, self::SERVICE);
     }
 
     public function authenticate(string $gitlabToken, string $url = null): void
@@ -78,15 +78,16 @@ class GitLabService extends GitProviderService
         return $commitId;
     }
 
-    public function createWebhook(string $pathWithNamespace, array $events = array('push_events'), string $defaultBranch): array
+    public function createWebhook(string $pathWithNamespace, string $defaultBranch): array
     {
         $hookData = [
+            'name' => 'web',
             'url' => $_ENV['BASE_URL'] . $_ENV['GITLAB_WEBHOOK_RESPONSE_URL'],
-            'push_events' => $events['push_events'] ?? true,
+            'push_events' => true,
             'push_events_branch_filter' => $defaultBranch,
-            'merge_requests_events' => $events['merge_requests_events'] ?? false,
-            'tag_push_events' => $events['tag_push_events'] ?? false,
-            'issues_events' => $events['issues_events'] ?? false,
+            'merge_requests_events' => false,
+            'tag_push_events' => false,
+            'issues_events' => false,
             'enable_ssl_verification' => false,
         ];
 
@@ -101,15 +102,11 @@ class GitLabService extends GitProviderService
         return $response;
     }
 
-    public function updateWebhookStatus(string $pathWithNamespace, int $hookId, array $events = array(), int $repositoryId = 0): array
+    public function updateWebhookStatus(string $pathWithNamespace, int $hookId, bool $status = false, int $repositoryId = 0): array
     {
         $hookData = [
             'url' => $_ENV['BASE_URL'] . $_ENV['GITLAB_WEBHOOK_RESPONSE_URL'],
-            'push_events' => $events['push_events'] ?? false,
-            'merge_requests_events' => $events['merge_requests_events'] ?? false,
-            'tag_push_events' => $events['tag_push_events'] ?? false,
-            'issues_events' => $events['issues_events'] ?? false,
-            'enable_ssl_verification' => false,
+            'push_events' => $status,
             'custom_headers' => array(
                 array(
                     'key' => 'X-Custom-Webhook-Id',
@@ -146,6 +143,52 @@ class GitLabService extends GitProviderService
             default:
                 break;
         }
+    }
+
+    public function getRepositoryOwner(array $repository): string
+    {
+        return $repository['namespace']['full_path'];
+    }
+
+    public function getRepositoryPath(array $repository): string
+    {
+        return $repository['path_with_namespace'];
+    }
+
+    public function getCommitIdentifier(array $commit): string
+    {
+        return $commit['id'];
+    }
+
+    public function processCommit(array $commit, array $commitDetails): array
+    {
+        $commitDetails = ['files' => $commitDetails];
+
+        $commitDetails['files'] = array_map(fn($row) => array_merge([
+            'sha' => substr(hash('sha256', $row['new_path']), 0, 7),
+            'filename' => $row['new_path'] ?? $row['old_path'],
+            'status' => $row['new_file'] ? 'added' : ($row['deleted_file'] ? 'deleted' : ($row['renamed_file'] ? 'renamed' : 'modified')),
+            'patch' => $row['diff'],
+        ], $this->gitAnalysisService->getChangeStat($row['diff'])), $commitDetails['files']);
+
+        $commitAnalysis = $this->gitAnalysisService->analyzeCommit($commitDetails['files'], $commit['message']);
+        $commitDetails['files'] = ["files" => $commitAnalysis['files'], "stats" => array_merge($commit['stats'] ?? [], $commitAnalysis['stats'])];
+        $commitDetails['files']["files"] = array_map(fn($row) => [
+            'sha' => $row['sha'],
+            'filename' => $row['filename'],
+            'status' => $row['status'],
+            'additions' => $row['additions'] ?? null,
+            'deletions' => $row['deletions'] ?? null,
+            'changes' => $row['changes'] ?? null,
+        ], $commitDetails['files']["files"]);
+
+        return $commitDetails;
+    }
+
+    public function listWebhooks(string $repoName): array
+    {
+        $url = $this->gitlabAPIUrl . "/projects/{$this->urlEncodeRepoName($repoName)}/hooks";
+        return $this->makeGetRequest($url);
     }
 
     private function makeGetRequest(string $url): array

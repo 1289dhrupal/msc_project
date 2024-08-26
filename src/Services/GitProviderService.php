@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace MscProject\Services;
 
+use Exception;
 use MscProject\Repositories\GitRepository;
 use MscProject\Services\GitTokenService;
 
@@ -13,15 +14,16 @@ abstract class GitProviderService
     protected string $service;
     protected GitRepository $gitRepository;
     protected GitTokenService $gitTokenService;
-
-    public function __construct(GitTokenService $gitTokenService, GitRepository $gitRepository, string $service)
+    protected GitAnalysisService $gitAnalysisService;
+    public function __construct(GitTokenService $gitTokenService, GitRepository $gitRepository, GitAnalysisService $gitAnalysisService, string $service)
     {
         $this->gitRepository = $gitRepository;
         $this->gitTokenService = $gitTokenService;
+        $this->gitAnalysisService = $gitAnalysisService;
         $this->service = $service;
     }
 
-    abstract protected function authenticate(string $token): void;
+    abstract protected function authenticate(string $token, string $url): void;
 
     public function fetchGitTokens(): array
     {
@@ -84,15 +86,92 @@ abstract class GitProviderService
         $this->gitRepository->updateRepositoryFetchedAt($repositoryId);
     }
 
+    public function updateTokenFetchedAt(int $gitTokenId): void
+    {
+        $this->gitTokenService->updateFetchedAt($gitTokenId);
+    }
+
     abstract protected function storeRepository(array $repository, int $gitTokenId, int $hookId): int;
 
     abstract protected function storeCommit(array $commit, array $commitDetails, int $repositoryId): int;
 
-    abstract protected function createWebhook(string $repoName, array $events, string $defaultBranch): array;
+    abstract protected function listWebhooks(string $repoName): array;
 
-    abstract protected function updateWebhookStatus(string $repoName, int $hookId, array $active): array;
+    abstract protected function createWebhook(string $repoName, string $defaultBranch): array;
+
+    abstract protected function updateWebhookStatus(string $repoName, int $hookId, bool $active, int $repositoryId): array;
 
     abstract protected function handleEvent(string $event, int $hookId, array $data): void;
+
+    abstract protected function getRepositoryOwner(array $repository): string;
+
+    abstract protected function getRepositoryPath(array $repository): string;
+
+    abstract protected function getCommitIdentifier(array $commit): string;
+
+    abstract protected function processCommit(array $commit, array $commitDetails): array;
+
+    public function fetchAll()
+    {
+        $gitTokens = $this->fetchGitTokens();
+
+        foreach ($gitTokens as $gitToken) {
+
+            if (!$gitToken['is_active']) {
+                continue;
+            }
+
+            $this->authenticate($gitToken['token'], $gitToken['url']);
+            $repositories = $this->fetchRepositories();
+
+            foreach ($repositories as $repository) {
+                $repoOwner = $this->getRepositoryOwner($repository);
+                $repoPath = $this->getRepositoryPath($repository);
+
+                $repo = $this->getRepository($gitToken['id'], $repoOwner, $repository['name']);
+
+                if ($repo && !$repo['is_active']) {
+                    continue;
+                }
+
+                $repositoryId = $repo['id'] ?? 0;
+
+                if (!$repositoryId) {
+                    $hookId = 0;
+
+                    $hooks = $this->listWebhooks($repoPath);
+                    foreach ($hooks as $hook) {
+                        if ($hook['name'] === 'web') {
+                            $hookId = $hook['id'];
+                            break;
+                        }
+                    }
+
+                    if (!$hookId) {
+                        $hook = $this->createWebhook($repoPath, $repository['default_branch']);
+                        $hookId = $hook['id'];
+                    }
+
+                    $repositoryId = $this->storeRepository($repository, $gitToken['id'], $hookId);
+                    $this->updateWebhookStatus($repoPath, $hookId, true, $repositoryId);
+                }
+
+                $commits = $this->fetchCommits($repoPath, $repository['default_branch']);
+                foreach ($commits as $commit) {
+                    $commitIdentifier = $this->getCommitIdentifier($commit);
+                    if (!$this->getCommit($repositoryId, $commitIdentifier)) {
+                        $commitDetails = $this->fetchCommitDetails($commitIdentifier, $repoPath);
+                        $commitDetails = $this->processCommit($commit, $commitDetails);
+                        $commitId = $this->storeCommit($commit, $commitDetails, $repositoryId);
+                    }
+                }
+
+                $this->updateRepositoryFetchedAt($repositoryId);
+            }
+
+            $this->updateTokenFetchedAt($gitToken['id']);
+        }
+    }
 
     public function handlePushEvent($repository, $gitToken, $data)
     {

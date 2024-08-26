@@ -10,6 +10,7 @@ use MscProject\Middleware\AuthMiddleware;
 use MscProject\Controllers\UserController;
 use MscProject\Controllers\GitTokenController;
 use MscProject\Controllers\GitController;
+use MscProject\Controllers\WebHookController;
 use MscProject\Models\Response\ErrorResponse;
 
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
@@ -32,20 +33,26 @@ header("Access-Control-Allow-Credentials: true");
 // Create the Orchestrator with the configuration
 Orchestrator::getInstance();
 
-Router::post('/register', UserController::class, 'register');
 Router::get('/verify', UserController::class, 'verify');
+Router::post('/register', UserController::class, 'register');
 Router::post('/login', UserController::class, 'login');
 Router::post('/logout', UserController::class, 'logout', [AuthMiddleware::class]);
+
 Router::post('/git-token/store', GitTokenController::class, 'store', [AuthMiddleware::class]);
 Router::get('/git-token/list', GitTokenController::class, 'list', [AuthMiddleware::class]);
+Router::delete('/git-token/${tokenId}', GitTokenController::class, 'delete', [AuthMiddleware::class]);
+Router::post('/git-token/${tokenId}/toggle', GitTokenController::class, 'toggle', [AuthMiddleware::class]);
+
 Router::get('/git/repositories/list', GitController::class, 'listRepositories', [AuthMiddleware::class]);
-Router::delete('/git/repositories/${repositoryId}', GitController::class, 'deleteRepository', [AuthMiddleware::class]);
 Router::get('/git/repositories/${repositoryId}/commits', GitController::class, 'listCommits', [AuthMiddleware::class]);
 Router::get('/git/commits', GitController::class, 'listCommits', [AuthMiddleware::class]);
 Router::post('/git/repositories/${repositoryId}/toggle', GitController::class, 'toggleRepository', [AuthMiddleware::class]);
-Router::post('/git-token/${tokenId}/toggle', GitTokenController::class, 'toggle', [AuthMiddleware::class]);
-Router::delete('/git-token/${tokenId}', GitTokenController::class, 'delete', [AuthMiddleware::class]);
+Router::delete('/git/repositories/${repositoryId}', GitController::class, 'deleteRepository', [AuthMiddleware::class]);
+
 Router::get('/dashboard/commitFrequency', DashboardController::class, 'commitFrequency', [AuthMiddleware::class]);
+
+Router::post($_ENV['GITHUB_WEBHOOK_RESPONSE_URL'], WebHookController::class, 'handleGitHubWebhook');
+Router::post($_ENV['GITLAB_WEBHOOK_RESPONSE_URL'], WebHookController::class, 'handleGitLabWebhook');
 
 try {
     // Dispatch the request (example usage)

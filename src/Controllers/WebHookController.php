@@ -6,11 +6,10 @@ namespace MscProject\Controllers;
 
 use MscProject\Services\GitHubService;
 use MscProject\Services\GitLabService;
-use MscProject\Models\Response\ErrorResponse;
 use MscProject\Models\Response\Response;
 use MscProject\Models\Response\SuccessResponse;
 
-class WebhookController
+class WebHookController
 {
     private GitHubService $githubService;
     private GitLabService $gitlabService;
