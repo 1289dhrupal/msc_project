@@ -1,0 +1,13 @@
+Subject: Repository Activity Summary
+
+Body:
+Hello,
+
+The repositories for the token you have added have synced perfectly.
+
+Here is the summary of repository activities:
+
+[Repository Summaries]
+
+Best regards,
+[Your Name or Team Name]

@@ -404,7 +404,7 @@ class GitRepository
     {
         $sql = "DELETE FROM repositories WHERE id = :id";
         if ($userId != 0) {
-            $sql .= " AND (SELECT user_id FROM git_tokens WHERE id = git_token_id) = :user_id";
+            $sql .= " AND (SELECT user_id FROM git_tokens WHERE id = git_token_id AND IS NOT is_active) = :user_id";
         }
         $stmt = $this->db->prepare($sql);
         $stmt->bindParam(':id', $repoId, PDO::PARAM_INT);

@@ -39,6 +39,7 @@ class GitTokenService
             $token = $mask ? Utils::maskToken($token) : $token;
             $res[] = [
                 'id' => $gitToken->getId(),
+                'user_id' => $gitToken->getUserId(),
                 'token' => $token,
                 'service' => $gitToken->getService(),
                 'url' => $gitToken->getUrl(),
