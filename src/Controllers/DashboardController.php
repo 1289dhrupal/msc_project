@@ -71,9 +71,19 @@ class DashboardController
                 'code_changes' => ($response['repository_stats'][$commit->getRepositoryId()]['code_changes'] ?? 0) + $codeChanges,
             ];
         }
-        ksort($response['hourly_stats']);
-        // ksort($response['monthly_stats']);
-        ksort($response['repository_stats']);
+
+        if (isset($response['hourly_stats'])) {
+
+            ksort($response['hourly_stats']);
+        }
+        if (isset($response['monthly_stats'])) {
+
+            ksort($response['monthly_stats']);
+        }
+        if (isset($response['repository_stats'])) {
+
+            ksort($response['repository_stats']);
+        }
 
         return new SuccessResponse('Success', $response, 200);
     }
