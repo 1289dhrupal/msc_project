@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace MscProject\Services;
 
 use Exception;
+use MscProject\Mailer;
 use MscProject\Models\GitToken;
 use MscProject\Models\Repository;
 use MscProject\Repositories\GitRepository;
+use MscProject\Repositories\UserRepository;
 use MscProject\Services\GitTokenService;
 
 abstract class GitProviderService
@@ -17,27 +19,51 @@ abstract class GitProviderService
     protected GitRepository $gitRepository;
     protected GitTokenService $gitTokenService;
     protected GitAnalysisService $gitAnalysisService;
+    protected UserRepository $userRepository;
 
-    public function __construct(GitTokenService $gitTokenService, GitRepository $gitRepository, GitAnalysisService $gitAnalysisService, string $service)
+    public function __construct(GitTokenService $gitTokenService, GitRepository $gitRepository, GitAnalysisService $gitAnalysisService, UserRepository $userRepository, string $service)
     {
         $this->gitRepository = $gitRepository;
         $this->gitTokenService = $gitTokenService;
         $this->gitAnalysisService = $gitAnalysisService;
+        $this->userRepository = $userRepository;
         $this->service = $service;
     }
 
     abstract protected function authenticate(string $token, string $url): void;
-
-    public function fetchGitTokens(): array
-    {
-        return $this->gitTokenService->list(service: $this->service);
-    }
 
     abstract protected function fetchRepositories(): array;
 
     abstract protected function fetchCommits(string $repoName, string $branch): array;
 
     abstract protected function fetchCommitDetails(string $sha, string $repoName): array;
+
+    abstract protected function storeRepository(array $repository, int $gitTokenId, int $hookId): int;
+
+    abstract protected function storeCommit(array $commit, array $commitDetails, int $repositoryId): int;
+
+    abstract protected function listWebhooks(string $repoName): array;
+
+    abstract protected function createWebhook(string $repoName, string $defaultBranch): array;
+
+    abstract protected function updateWebhookStatus(string $repoName, int $hookId, bool $active, int $repositoryId): array;
+
+    abstract protected function handleEvent(string $event, int $hookId, array $data): void;
+
+    abstract protected function getRepositoryOwner(array $repository): string;
+
+    abstract protected function getRepositoryPath(array $repository): string;
+
+    abstract protected function getCommitIdentifier(array $commit): string;
+
+    abstract protected function processCommit(array $commit, array $commitDetails): array;
+
+    abstract protected function getCommitSummaries(array $commit, array $commitDetails): string;
+
+    public function fetchGitTokens(): array
+    {
+        return $this->gitTokenService->list(service: $this->service);
+    }
 
     public function getRepository(int $gitTokenId, string $owner, string $name): array
     {
@@ -93,26 +119,6 @@ abstract class GitProviderService
     {
         $this->gitTokenService->updateFetchedAt($gitTokenId);
     }
-
-    abstract protected function storeRepository(array $repository, int $gitTokenId, int $hookId): int;
-
-    abstract protected function storeCommit(array $commit, array $commitDetails, int $repositoryId): int;
-
-    abstract protected function listWebhooks(string $repoName): array;
-
-    abstract protected function createWebhook(string $repoName, string $defaultBranch): array;
-
-    abstract protected function updateWebhookStatus(string $repoName, int $hookId, bool $active, int $repositoryId): array;
-
-    abstract protected function handleEvent(string $event, int $hookId, array $data): void;
-
-    abstract protected function getRepositoryOwner(array $repository): string;
-
-    abstract protected function getRepositoryPath(array $repository): string;
-
-    abstract protected function getCommitIdentifier(array $commit): string;
-
-    abstract protected function processCommit(array $commit, array $commitDetails): array;
 
     public function fetchAll()
     {
@@ -176,7 +182,7 @@ abstract class GitProviderService
         }
 
         // TODO: Send email
-        // $this->sendEmail($repository, $gitToken, $commitDetails);
+        // $this->sendSyncAleartEmail($repository, $gitToken, $commitDetails);
     }
 
     public function handlePushEvent(Repository $repository, GitToken $gitToken, string $repoPath): void
@@ -185,13 +191,17 @@ abstract class GitProviderService
         $repositoryId = $repository->getId();
         $defaultBranch = $repository->getDefaultBranch();
 
+        $this->authenticate($gitToken->getToken(), $gitToken->getUrl());
+
         $commits = $this->fetchCommits($repoPath, $defaultBranch);
+        $commitSummaries = [];
         foreach ($commits as $commit) {
             $commitIdentifier = $this->getCommitIdentifier($commit);
             if (!$this->getCommit($repositoryId, $commitIdentifier)) {
                 $commitDetails = $this->fetchCommitDetails($commitIdentifier, $repoPath);
                 $commitDetails = $this->processCommit($commit, $commitDetails);
                 $this->storeCommit($commit, $commitDetails, $repositoryId);
+                $commitSummaries[] = $this->getCommitSummaries($commit, $commitDetails);
             }
         }
 
@@ -199,7 +209,39 @@ abstract class GitProviderService
 
         $this->updateTokenFetchedAt($gitTokenId);
 
-        // TODO: Send email
-        // $this->sendEmail($repository, $gitToken, $commitDetails);
+        $this->sendActivityAlertEmail($repository, $gitToken, $commitSummaries);
+    }
+
+    public function sendActivityAlertEmail(Repository $repository, GitToken $gitToken, array $commitSummaries): void
+    {
+
+        $templatePath = __DIR__ . '/../Templates/real_time_activity_alert.txt';
+        $commitSummariesFormatted = '<ul><li>' . implode('</li><li>', $commitSummaries) . '</li></ul>';
+
+        $template = str_replace(
+            ['[Repository Name]', '[Default Branch Name]', '[Commit Summaries]', '[Your Name or Team Name]'],
+            [$repository->getName(), $repository->getDefaultBranch(), $commitSummariesFormatted, $_ENV['APP_NAME']],
+            file_get_contents($templatePath)
+        );
+
+        // Extract the subject and body using more streamlined methods
+        list($subject, $body) = $this->extractSubjectAndBody($template);
+        $user = $this->userRepository->getUserById($gitToken->getUserId());
+
+        // Send the email
+        $mailer = Mailer::getInstance();
+        $mailer->sendEmail($user->getEmail(), $subject, nl2br($body)); // Convert newlines to <br> in the body
+    }
+
+    private function extractSubjectAndBody(string $template): array
+    {
+        // Extract the subject
+        preg_match('/^Subject:\s*(.+)$/m', $template, $subjectMatches);
+        $subject = trim($subjectMatches[1]);
+
+        // Extract the body content after the "Body:" line
+        $body = trim(preg_replace('/^Subject:.*?^Body:\s*/ms', '', $template));
+
+        return [$subject, $body];
     }
 }

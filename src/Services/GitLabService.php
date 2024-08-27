@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace MscProject\Services;
 
-require 'vendor/autoload.php';
-
 use ErrorException;
 use MscProject\Repositories\GitRepository;
+use MscProject\Repositories\UserRepository;
 use MscProject\Services\GitProviderService;
 
 class GitLabService extends GitProviderService
@@ -16,9 +15,9 @@ class GitLabService extends GitProviderService
     private string $gitToken;
     private const SERVICE = 'gitlab';
 
-    public function __construct(GitRepository $gitRepository, GitTokenService $gitTokenService, GitAnalysisService $gitAnalysisService)
+    public function __construct(GitRepository $gitRepository, GitTokenService $gitTokenService, GitAnalysisService $gitAnalysisService, UserRepository $userRepository)
     {
-        parent::__construct($gitTokenService, $gitRepository, $gitAnalysisService, self::SERVICE);
+        parent::__construct($gitTokenService, $gitRepository, $gitAnalysisService, $userRepository, self::SERVICE);
     }
 
     public function authenticate(string $gitlabToken, string $url = null): void
@@ -131,7 +130,7 @@ class GitLabService extends GitProviderService
             throw new ErrorException("Repository is not active.", 200);
         }
 
-        $gitToken = $this->gitRepository->getToken($repository['git_token_id']);
+        $gitToken = $this->gitRepository->getToken($repository->getGitTokenId());
         if (!$gitToken || !$gitToken->isActive()) {
             throw new ErrorException("Token is not active.", 200);
         }
@@ -194,6 +193,21 @@ class GitLabService extends GitProviderService
     {
         $url = $this->gitlabAPIUrl . "/projects/{$this->urlEncodeRepoName($repoName)}/hooks";
         return $this->makeGetRequest($url);
+    }
+
+    public function getCommitSummaries(array $commit, array $commitDetails): string
+    {
+        // Format the commit summary string
+        return sprintf(
+            "Commit (%s): '%s' by '%s' on '%s'\n   Additions: %d, Deletions: %d, Total: %d\n",
+            $commit['id'],
+            trim(substr($commit['message'], 0, 10)) . '...',
+            $commit['author_email'] ?? $commit['committer_email'],
+            $commit['created_at'],
+            $commit['stats']['additions'],
+            $commit['stats']['deletions'],
+            $commit['stats']['total']
+        );
     }
 
     private function makeGetRequest(string $url): array

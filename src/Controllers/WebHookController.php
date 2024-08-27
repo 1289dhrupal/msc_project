@@ -24,7 +24,7 @@ class WebHookController
     {
         $headers = getallheaders();
         $githubEvent = $headers['X-GitHub-Event'] ?? '';
-        $githubHookId = $headers['X-GitHub-Hook-ID'] ?? '';
+        $githubHookId = (int) $headers['X-GitHub-Hook-ID'] ?? '';
 
         $payload = file_get_contents('php://input') ?? array();
         $data = json_decode($payload, true);
@@ -33,17 +33,17 @@ class WebHookController
         return new SuccessResponse("GitHub webhook processed successfully.");
     }
 
-    public function handleGitLabWebhook(): void
+    public function handleGitLabWebhook(): Response
     {
 
         $headers = getallheaders();
         $gitlabEvent = $headers['X-Gitlab-Event'] ?? '';
-        $gitlabHookId = $headers['X-Custom-Webhook-Id'] ?? '';
+        $gitlabHookId = (int) $headers['X-Custom-Webhook-Id'] ?? '';
 
         $payload = file_get_contents('php://input');
         $data = json_decode($payload, true);
 
         $this->gitlabService->handleEvent($gitlabEvent, $gitlabHookId, $data);
-        new SuccessResponse("GitLab webhook processed successfully.");
+        return new SuccessResponse("GitLab webhook processed successfully.");
     }
 }

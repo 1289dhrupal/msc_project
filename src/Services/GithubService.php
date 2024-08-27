@@ -4,22 +4,21 @@ declare(strict_types=1);
 
 namespace MscProject\Services;
 
-require 'vendor/autoload.php';
-
 use ErrorException;
 use Github\Client;
 use Github\AuthMethod;
 use MscProject\Repositories\GitRepository;
+use MscProject\Repositories\UserRepository;
 
 class GithubService extends GitProviderService
 {
     private Client $client;
     private const SERVICE = 'github';
 
-    public function __construct(GitTokenService $gitTokenService, GitRepository $gitRepository, GitAnalysisService $gitAnalysisService)
+    public function __construct(GitRepository $gitRepository, GitTokenService $gitTokenService, GitAnalysisService $gitAnalysisService, UserRepository $userRepository)
     {
         $this->client = new Client();
-        parent::__construct($gitTokenService, $gitRepository, $gitAnalysisService, self::SERVICE);
+        parent::__construct($gitTokenService, $gitRepository, $gitAnalysisService, $userRepository, self::SERVICE);
     }
 
     public function authenticate(string $githubToken, string $url = null): void
@@ -123,7 +122,7 @@ class GithubService extends GitProviderService
             throw new ErrorException("Repository is not active.", 200);
         }
 
-        $gitToken = $this->gitRepository->getToken($repository['git_token_id']);
+        $gitToken = $this->gitRepository->getToken($repository->getGitTokenId());
         if (!$gitToken || !$gitToken->isActive()) {
             throw new ErrorException("Token is not active.", 200);
         }
@@ -135,7 +134,7 @@ class GithubService extends GitProviderService
 
         switch ($event) {
             case 'push':
-                parent::handlePushEvent($repository, $gitToken, $data['repository']['owner']['login']);
+                parent::handlePushEvent($repository, $gitToken, $data['repository']['name']);
                 break;
             default:
                 throw new ErrorException("Event not supported.", 200);
@@ -183,5 +182,20 @@ class GithubService extends GitProviderService
         ], $commitDetails['files']["files"]);
 
         return $commitDetails;
+    }
+
+    public function getCommitSummaries(array $commit, array $commitDetails): string
+    {
+        // Format the commit summary string
+        return sprintf(
+            "Commit (%s): '%s' by '%s' on '%s'\n   Additions: %d, Deletions: %d, Total: %d\n",
+            $commit['sha'],
+            trim(substr($commit['commit']['message'], 0, 10)) . '...',
+            $commit['author']['login'] ?? $commit['commit']['author']['email'],
+            $commit['commit']['author']['date'],
+            $commitDetails['stats']['additions'],
+            $commitDetails['stats']['deletions'],
+            $commitDetails['stats']['total']
+        );
     }
 }
