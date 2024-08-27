@@ -18,49 +18,75 @@ class ActivityService
 
     public function generateReports(): void
     {
-        $intervals = [
-            '1_week' => '1 WEEK',
-            '1_fortnight' => '2 WEEK',
-            '1_month' => '1 MONTH',
-        ];
+        $intervals = $this->getIntervals();
 
         $users = $this->activityRepository->fetchUsersWithTokens();
 
         foreach ($users as $user) {
-            $userId = $user['user_id'];
-            $email = $user['email'];
-            $gitTokenId = $user['git_token_id'];
+            $csvFiles = $this->generateCsvReportsForUser($user, $intervals);
 
-            $csvFiles = [];
+            $this->sendEmailWithReports($user['email'], $csvFiles);
 
-            foreach ($intervals as $key => $interval) {
-                $repositories = $this->activityRepository->fetchInactiveRepositories($gitTokenId, $interval);
-                $filename = "inactive_repositories_{$userId}_{$key}.csv";
-                $file = fopen($filename, 'w');
+            $this->cleanupFiles($csvFiles);
+        }
+    }
 
-                // Write CSV headers
-                fputcsv($file, ['ID', 'Name', 'Owner', 'Last Activity']);
+    private function getIntervals(): array
+    {
+        return [
+            '1_week' => '1 WEEK',
+            '1_fortnight' => '2 WEEK',
+            '1_month' => '1 MONTH',
+        ];
+    }
 
-                // Write repository data
-                foreach ($repositories as $repo) {
-                    fputcsv($file, [$repo['id'], $repo['name'], $repo['owner'], $repo['last_activity']]);
-                }
+    private function generateCsvReportsForUser(array $user, array $intervals): array
+    {
+        $userId = $user['user_id'];
+        $gitTokenId = $user['git_token_id'];
 
-                fclose($file);
-                $csvFiles[$key] = $filename;
-            }
+        $csvFiles = [];
 
-            // Send email with CSV attachments using the Mailer class
-            $mailer = Mailer::getInstance();
-            $subject = 'Inactive Repositories Report';
-            $body = 'Attached are the reports of repositories with no activity in the last 1 week, 1 fortnight, and 1 month.';
+        foreach ($intervals as $key => $interval) {
+            $repositories = $this->activityRepository->fetchInactiveRepositories($gitTokenId, $interval);
+            $filename = $this->createCsvFile($userId, $key, $repositories);
+            $csvFiles[$key] = $filename;
+        }
 
-            $mailer->sendEmail($email, $subject, $body, $csvFiles);
+        return $csvFiles;
+    }
 
-            // Cleanup
-            foreach ($csvFiles as $filename) {
-                unlink($filename);
-            }
+    private function createCsvFile(int $userId, string $intervalKey, array $repositories): string
+    {
+        $filename = "inactive_repositories_{$userId}_{$intervalKey}.csv";
+        $file = fopen($filename, 'w');
+
+        // Write CSV headers
+        fputcsv($file, ['ID', 'Name', 'Owner', 'Last Activity']);
+
+        // Write repository data
+        foreach ($repositories as $repo) {
+            fputcsv($file, [$repo['id'], $repo['name'], $repo['owner'], $repo['last_activity']]);
+        }
+
+        fclose($file);
+
+        return $filename;
+    }
+
+    private function sendEmailWithReports(string $email, array $csvFiles): void
+    {
+        $mailer = Mailer::getInstance();
+        $subject = 'Inactive Repositories Report';
+        $body = 'Attached are the reports of repositories with no activity in the last 1 week, 1 fortnight, and 1 month.';
+
+        $mailer->sendEmail($email, $subject, $body, $csvFiles);
+    }
+
+    private function cleanupFiles(array $csvFiles): void
+    {
+        foreach ($csvFiles as $filename) {
+            unlink($filename);
         }
     }
 }

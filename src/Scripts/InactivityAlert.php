@@ -13,6 +13,9 @@ use MscProject\Routing\Orchestrator;
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../../');
 $dotenv->load();
 
+/**
+ * @var ActivityService
+ */
 $activityService = Orchestrator::getInstance()->get(ActivityService::class);
 
 // Generate reports
