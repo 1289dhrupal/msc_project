@@ -33,7 +33,7 @@ class Database
             $this->connection = new PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASS']);
             $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         } catch (PDOException $e) {
-            throw new PDOException("Database connection error: " . $e->getMessage(), 500);
+            throw new PDOException("Database connection error: " . $e->getMessage(), 500, $e);
         }
     }
 

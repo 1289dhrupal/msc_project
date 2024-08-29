@@ -77,7 +77,7 @@ class Orchestrator
                 return $reflectionClass->newInstanceArgs($dependencies);
             }
         } catch (ReflectionException $e) {
-            throw new \Exception("Unable to resolve class: $class", 0, $e);
+            throw new \Exception("Unable to resolve class: $class", 500, $e);
         }
     }
 

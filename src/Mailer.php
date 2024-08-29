@@ -39,7 +39,7 @@ class Mailer
             $this->mail->Port = (int)$_ENV['SMTP_PORT'];
             $this->mail->setFrom($_ENV['SMTP_FROM'], $_ENV['SMTP_FROM_NAME']);
         } catch (MailException $e) {
-            throw new \ErrorException('Mailer configuration error: ' . $e->getMessage(), 500);
+            throw new \ErrorException('Mailer configuration error: ' . $e->getMessage(), 500, previous: $e);
         }
     }
 
@@ -61,10 +61,8 @@ class Mailer
             $this->mail->Body = $body;
 
             $this->mail->send();
-
-            // echo "Email has been sent to {$to}.";
         } catch (MailException $e) {
-            // echo "Email could not be sent to {$to}. Mailer Error: {$this->mail->ErrorInfo}";
+            throw new \ErrorException("Email could not be sent to {$to}. Mailer Error: {$this->mail->ErrorInfo}" . $e->getMessage(), 500, previous: $e);
         }
     }
 }

@@ -40,9 +40,26 @@ class GithubService extends GitProviderService
 
     public function fetchCommits(string $repoName, string $branch = 'main'): array
     {
-        return $this->client->repo()->commits()->all($this->username, $repoName, []);
-    }
+        $allCommits = [];
+        $page = 1;
 
+        do {
+            // Fetch commits from the current page
+            $commits = $this->client->repo()->commits()->all($this->username, $repoName, [
+                'sha' => $branch,
+                'page' => $page,
+                'per_page' => 100, // Fetch 100 commits per page (the maximum allowed by most APIs)
+            ]);
+
+            // Merge the newly fetched commits with the allCommits array
+            $allCommits = array_merge($allCommits, $commits);
+
+            // Increment the page number for the next request
+            $page++;
+        } while (count($commits) > 0); // Continue fetching as long as we get commits
+
+        return $allCommits;
+    }
     public function fetchCommitDetails(string $sha, string $repoName): array
     {
         return $this->client->repo()->commits()->show($this->username, $repoName, $sha);

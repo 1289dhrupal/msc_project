@@ -419,7 +419,7 @@ class GitRepository
     /**
      * @return Commit[]
      */
-    public function listCommits(int $repoId = 0, int $userId = 0): array
+    public function listCommits(int $repoId = 0, int $userId = 0, $order = 'DESC'): array
     {
         $sql = "SELECT c.* FROM commits c";
 
@@ -441,7 +441,7 @@ class GitRepository
             $sql .= " WHERE " . implode(" AND ", $conditions);
         }
 
-        $sql .= " ORDER BY c.date DESC";
+        $sql .= " ORDER BY c.date $order";
 
         $stmt = $this->db->prepare($sql);
         if ($repoId != 0) {

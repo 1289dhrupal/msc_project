@@ -48,8 +48,9 @@ Router::get('/git/repositories/${repositoryId}/commits', GitController::class, '
 Router::get('/git/commits', GitController::class, 'listCommits', [AuthMiddleware::class]);
 Router::post('/git/repositories/${repositoryId}/toggle', GitController::class, 'toggleRepository', [AuthMiddleware::class]);
 Router::delete('/git/repositories/${repositoryId}', GitController::class, 'deleteRepository', [AuthMiddleware::class]);
+Router::get('/git/repositories/${repositoryId}/stats', GitController::class, 'getStats', [AuthMiddleware::class]);
 
-Router::get('/dashboard/commitFrequency', DashboardController::class, 'commitFrequency', [AuthMiddleware::class]);
+Router::get('/dashboard/overallStats', DashboardController::class, 'overallStats', [AuthMiddleware::class]);
 
 Router::post($_ENV['GITHUB_WEBHOOK_RESPONSE_URL'], WebHookController::class, 'handleGitHubWebhook');
 Router::post($_ENV['GITLAB_WEBHOOK_RESPONSE_URL'], WebHookController::class, 'handleGitLabWebhook');
@@ -58,7 +59,7 @@ try {
     // Dispatch the request (example usage)
     Router::dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);
 } catch (\Throwable $e) {
-    $response = new ErrorResponse('Something went wrong', 'Internal Server Error', 500);
+    $response = new ErrorResponse($e->getMessage(), $e->getTraceAsString(), 500);
     $response->send();
 }
 

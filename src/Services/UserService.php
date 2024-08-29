@@ -102,7 +102,7 @@ class UserService
             // Send email
             $mailer->sendEmail($to, $subject, $body);
         } catch (\Exception $e) {
-            throw new \Exception('Verification email could not be sent. Error: ' . $e->getMessage(), 500);
+            throw new \Exception('Verification email could not be sent. Error: ' . $e->getMessage(), 500, previous: $e);
         }
     }
 

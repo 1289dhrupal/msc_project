@@ -52,9 +52,9 @@ class Router
 
             $response = self::handleRequest($route);
         } catch (\ErrorException $e) {
-            $response = new ErrorResponse($e->getMessage(), 'Internal Server Error', $e->getCode());
+            $response = new ErrorResponse($e->getMessage(), 'Internal Server Error: ' . $e->getTraceAsString(), $e->getCode());
         } catch (\Exception $e) {
-            $response = new ErrorResponse('Something went wrong', 'Internal Server Error', 500);
+            $response = new ErrorResponse('Something went wrong', 'Internal Server Error: ' . $e->getTraceAsString(), 500);
         } finally {
             $response->send();
         }

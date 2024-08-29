@@ -20,7 +20,7 @@ class DashboardController
         $this->gitRepository = $gitRepository;
     }
 
-    public function commitFrequency(): Response
+    public function overallStats(): Response
     {
         global $userSession;
 
@@ -72,18 +72,9 @@ class DashboardController
             ];
         }
 
-        if (isset($response['hourly_stats'])) {
-
-            ksort($response['hourly_stats']);
-        }
-        if (isset($response['monthly_stats'])) {
-
-            ksort($response['monthly_stats']);
-        }
-        if (isset($response['repository_stats'])) {
-
-            ksort($response['repository_stats']);
-        }
+        if (isset($response['hourly_stats']))       ksort($response['hourly_stats']);
+        if (isset($response['monthly_stats']))      ksort($response['monthly_stats']);
+        if (isset($response['repository_stats']))   ksort($response['repository_stats']);
 
         return new SuccessResponse('Success', $response, 200);
     }

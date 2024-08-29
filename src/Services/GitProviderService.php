@@ -139,6 +139,7 @@ abstract class GitProviderService
             foreach ($repositories as $repository) {
                 $repoOwner = $this->getRepositoryOwner($repository);
                 $repoPath = $this->getRepositoryPath($repository);
+                $repoName = $repository['name'];
 
                 $repo = $this->getRepository($gitToken['id'], $repoOwner, $repository['name']);
 
@@ -181,14 +182,14 @@ abstract class GitProviderService
                 }
 
                 $this->updateRepositoryFetchedAt($repositoryId);
-                $repositorySummaries[] = ['name' => $repoOwner, 'path' => $repoPath, 'commit_count' => $commitCount];
+                $repositorySummaries[] = ['owner' => $repoOwner, 'path' => $repoPath, 'name' => $repository['name'], 'commit_count' => $commitCount];
             }
 
             $this->updateTokenFetchedAt($gitToken['id']);
 
             $summary = ['user_id' => $gitToken['user_id'], 'git_token' => Utils::maskToken($gitToken['token']), 'url' => $gitToken['url'], 'repositories' => $repositorySummaries];
 
-            $this->sendSyncAlertEmail($gitToken, $summary);
+            $this->sendSyncAlertEmail($summary);
         }
     }
 
@@ -243,7 +244,7 @@ abstract class GitProviderService
         $mailer->sendEmail($user->getEmail(), $subject, nl2br($body)); // Convert newlines to <br> in the body
     }
 
-    private function sendSyncAlertEmail(array $gitToken, array $summary): void
+    private function sendSyncAlertEmail(array $summary): void
     {
         if (!$summary || !$summary['repositories'] || array_sum(array_column($summary['repositories'], 'commit_count')) === 0) {
             return;
@@ -260,8 +261,7 @@ abstract class GitProviderService
             $repositorySummaries .= sprintf(
                 "<li>Repository: %s, Commit Count: %d<li>",
                 $repo['name'],
-                $repo['path'],
-                $repo['commit_count']
+                (int)$repo['commit_count']
             );
         }
         $repositorySummaries .= "-----------------------------<br>";

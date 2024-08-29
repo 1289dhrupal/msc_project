@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace MscProject\Services;
 
+use DateTime;
 use Exception;
 use MscProject\Repositories\GitRepository;
 use MscProject\Models\GitToken;
@@ -121,5 +122,47 @@ class GitService
         }
 
         return ["commits" => array_values($commitResponse), "repositories" => $repoResponse];
+    }
+
+    public function getStats(int $repoId = 0, int $userId = 0): array
+    {
+        $repo = $this->gitRepository->getRepositoryById($repoId, $userId);
+        if ($repo === null) {
+            throw new Exception('Repository not found');
+        }
+
+        $commits = $this->gitRepository->listCommits($repoId, $userId, 'ASC');
+
+        $response = [];
+        $totalLines = 0;
+
+        $current = null;
+        foreach ($commits as $commit) {
+            $addtions = $commit->getAdditions();
+            $deletions = $commit->getDeletions();
+            $totalLines += ($addtions - $deletions);
+
+            $churnRate = $totalLines == 0 ? 0 : ($addtions + $deletions) / $totalLines  * 100;
+            $previous = $current ?? strtotime($commit->getDate());
+            $current = strtotime($commit->getDate());
+            $leadTime = round(($current - $previous) / 3600 / 24) . "\n";
+
+            $response['churn_rates'][] = [
+                'churn_rate' => $churnRate,
+                'lead_time' => $leadTime,
+                'additions' => $addtions,
+                'deletions' => -$deletions,
+                'total' => $totalLines,
+            ];
+
+            $response['contribution'][$commit->getAuthor()] = [
+                'count' => ($response['contribution'][$commit->getAuthor()]['count'] ?? 0) + 1,
+                'total' => ($response['contribution'][$commit->getAuthor()]['total'] ?? 0) + $commit->getTotal(),
+                'additions' => ($response['contribution'][$commit->getAuthor()]['additions'] ?? 0) + $addtions,
+                'deletions' => ($response['contribution'][$commit->getAuthor()]['deletions'] ?? 0) + $deletions,
+            ];
+        }
+
+        return $response;
     }
 }

@@ -28,7 +28,7 @@ class GitController
             $repositories = $this->gitService->listRepositories($userSession->getId(), $gitTokenId);
             return new SuccessResponse("Successfully Fetched Respositories", $repositories);
         } catch (Exception $e) {
-            throw new \ErrorException('Failed to fetch repositories', 400, E_USER_WARNING);
+            throw new \ErrorException('Failed to fetch repositories', 400, E_USER_WARNING, previous: $e);
         }
     }
 
@@ -44,7 +44,7 @@ class GitController
             $this->gitService->toggleRepository($repositoryId, $isActive, $userSession->getId());
             return new SuccessResponse("Updated the status for token ID: $repositoryId");
         } catch (Exception $e) {
-            throw new \ErrorException('Failed to toggle repository', 400, E_USER_WARNING);
+            throw new \ErrorException('Failed to toggle repository', 400, E_USER_WARNING, previous: $e);
         }
     }
 
@@ -55,7 +55,7 @@ class GitController
             $this->gitService->deleteRepository($repositoryId, $userSession->getId());
             return new SuccessResponse("Deleted the repository with ID: $repositoryId");
         } catch (Exception $e) {
-            throw new \ErrorException('Failed to delete repository', 400, E_USER_WARNING);
+            throw new \ErrorException('Failed to delete repository', 400, E_USER_WARNING, previous: $e);
         }
     }
 
@@ -66,7 +66,15 @@ class GitController
             $commits = $this->gitService->listCommits($repositoryId, $userSession->getId());
             return new SuccessResponse("Successfully Fetched Commits", $commits);
         } catch (Exception $e) {
-            throw new \ErrorException('Failed to fetch commits', 400, E_USER_WARNING);
+            throw new \ErrorException('Failed to fetch commits', 400, E_USER_WARNING, previous: $e);
         }
+    }
+
+    public function getStats(int $repositoryId = 0): Response
+    {
+        global $userSession;
+        $stats = $this->gitService->getStats($repositoryId, $userSession->getId());
+
+        return new SuccessResponse("Successfully Fetched Stats", $stats);
     }
 }
