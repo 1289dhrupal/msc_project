@@ -176,7 +176,7 @@ abstract class GitProviderService
                     if (!$this->getCommit($repositoryId, $commitIdentifier)) {
                         $commitDetails = $this->fetchCommitDetails($commitIdentifier, $repoPath);
                         $commitDetails = $this->processCommit($commit, $commitDetails);
-                        $this->storeCommit($commit, $commitDetails, $repositoryId);
+                        // $this->storeCommit($commit, $commitDetails, $repositoryId);
                         $commitCount += 1;
                     }
                 }
@@ -189,7 +189,7 @@ abstract class GitProviderService
 
             $summary = ['user_id' => $gitToken['user_id'], 'git_token' => Utils::maskToken($gitToken['token']), 'url' => $gitToken['url'], 'repositories' => $repositorySummaries];
 
-            $this->sendSyncAlertEmail($summary);
+            $this->sendSyncAlertEmail($gitToken, $summary);
         }
     }
 
@@ -226,6 +226,12 @@ abstract class GitProviderService
             return;
         }
 
+        $alerts = $this->userRepository->getUserAlerts($gitToken->getUserId());
+        print_r($alerts);
+        if (!$alerts || !$alerts->getRealtime()) {
+            return;
+        }
+
         $templatePath = __DIR__ . '/../Templates/real_time_activity_alert.txt';
         $commitSummariesFormatted = '<ul><li>' . implode('</li><li>', $commitSummaries) . '</li></ul>';
 
@@ -244,11 +250,17 @@ abstract class GitProviderService
         $mailer->sendEmail($user->getEmail(), $subject, nl2br($body)); // Convert newlines to <br> in the body
     }
 
-    private function sendSyncAlertEmail(array $summary): void
+    private function sendSyncAlertEmail(array $gitToken, array $summary): void
     {
         if (!$summary || !$summary['repositories'] || array_sum(array_column($summary['repositories'], 'commit_count')) === 0) {
             return;
         }
+
+        $alerts = $this->userRepository->getUserAlerts($gitToken['user_id']);
+        if (!$alerts || !$alerts->getSync()) {
+            return;
+        }
+
 
         // Initialize the repository summaries
         $repositorySummaries = '';

@@ -53,6 +53,31 @@ class GitTokenController
         return $response;
     }
 
+    public function edit(int $tokenId): Response
+    {
+        global $userSession;
+
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $input = array_merge(['token' => '', 'service' => 'github', 'url' => 'https://github.com', 'description' => ''], $input);
+
+        if (empty($input['token']) || empty($input['service'])) {
+            throw new \ErrorException('Token, and service are required', 400);
+        }
+
+        if (!in_array($input['service'], ['github', 'gitlab'], true)) {
+            throw new \ErrorException('Invalid service type', 400);
+        }
+
+        if (!filter_var($input['url'], FILTER_VALIDATE_URL)) {
+            throw new \ErrorException('Invalid URL', 400);
+        }
+
+        $result = $this->gitTokenService->edit($tokenId, $input['token'], $input['service'], $input['url'], $input['description'], $userSession->getId());
+        $response = new SuccessResponse('Git token updated successfully', $result);
+
+        return $response;
+    }
+
     public function toggle(int $tokenId): Response
     {
         global $userSession;

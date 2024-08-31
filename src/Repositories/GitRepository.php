@@ -539,4 +539,21 @@ class GitRepository
 
         return null;
     }
+
+    public function updateToken(GitToken $gitToken): void
+    {
+        $token = $gitToken->getToken();
+        $service = $gitToken->getService();
+        $url = $gitToken->getUrl();
+        $description = $gitToken->getDescription();
+        $id = $gitToken->getId();
+
+        $stmt = $this->db->prepare("UPDATE git_tokens SET token = :token, service = :service, url = :url, description = :description WHERE id = :id");
+        $stmt->bindParam(':token', $token, PDO::PARAM_STR);
+        $stmt->bindParam(':service', $service, PDO::PARAM_STR);
+        $stmt->bindParam(':url', $url, PDO::PARAM_STR);
+        $stmt->bindParam(':description', $description, PDO::PARAM_STR);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+    }
 }

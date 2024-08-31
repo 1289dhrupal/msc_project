@@ -51,6 +51,16 @@ class User
         return $this->status;
     }
 
+    public function setName(string $name): void
+    {
+        $this->name = $name;
+    }
+
+    public function setPassword(string $password): void
+    {
+        $this->password = $password;
+    }
+
     public function setStatus(string $status): void
     {
         $this->status = $status;

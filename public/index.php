@@ -37,10 +37,14 @@ Router::get('/verify', UserController::class, 'verify');
 Router::post('/register', UserController::class, 'register');
 Router::post('/login', UserController::class, 'login');
 Router::post('/logout', UserController::class, 'logout', [AuthMiddleware::class]);
+Router::get('/user', UserController::class, 'getUser', [AuthMiddleware::class]);
+Router::post('/user', UserController::class, 'updateUser', [AuthMiddleware::class]);
+Router::post('/user/alerts', UserController::class, 'updateAlerts', [AuthMiddleware::class]);
 
 Router::post('/git-token/store', GitTokenController::class, 'store', [AuthMiddleware::class]);
 Router::get('/git-token/list', GitTokenController::class, 'list', [AuthMiddleware::class]);
 Router::delete('/git-token/${tokenId}', GitTokenController::class, 'delete', [AuthMiddleware::class]);
+Router::post('/git-token/${tokenId}/edit', GitTokenController::class, 'edit', [AuthMiddleware::class]);
 Router::post('/git-token/${tokenId}/toggle', GitTokenController::class, 'toggle', [AuthMiddleware::class]);
 
 Router::get('/git/repositories/list', GitController::class, 'listRepositories', [AuthMiddleware::class]);

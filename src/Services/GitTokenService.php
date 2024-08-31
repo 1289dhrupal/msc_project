@@ -52,6 +52,15 @@ class GitTokenService
         return $res;
     }
 
+    public function edit(int $tokenId, string $token, string $service, string $url, string $description, int $userId = 0): void
+    {
+        $gitToken = $this->gitRepository->getToken($tokenId, $userId);
+        if ($gitToken !== null) {
+            $gitToken = new GitToken($tokenId, $userId, $token, $service, $url, $description, $gitToken->isActive(), $gitToken->getCreatedAt(), $gitToken->getLastFetchedAt());
+            $this->gitRepository->updateToken($gitToken);
+        }
+    }
+
     public function toggle(int $tokenId, bool $isActive, int $userId = 0): void
     {
         $this->gitRepository->toggleToken($tokenId, $isActive, $userId);

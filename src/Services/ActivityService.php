@@ -6,27 +6,32 @@ namespace MscProject\Services;
 
 use MscProject\Repositories\ActivityRepository;
 use MscProject\Mailer;
+use MscProject\Repositories\UserRepository;
 
 class ActivityService
 {
     private ActivityRepository $activityRepository;
+    private UserRepository $userRepository;
 
-    public function __construct(ActivityRepository $activityRepository)
+    public function __construct(ActivityRepository $activityRepository, UserRepository $userRepository)
     {
         $this->activityRepository = $activityRepository;
+        $this->userRepository = $userRepository;
     }
 
     public function generateReports(): void
     {
         $intervals = $this->getIntervals();
-
         $users = $this->activityRepository->fetchUsersWithTokens();
 
         foreach ($users as $user) {
+            $alerts = $this->userRepository->getUserAlerts($user['user_id']);
+            if ($alerts->getInactivity() === false) {
+                continue;
+            }
             $csvFiles = $this->generateCsvReportsForUser($user, $intervals);
 
             $this->sendEmailWithReports($user['email'], $csvFiles);
-
             $this->cleanupFiles($csvFiles);
         }
     }

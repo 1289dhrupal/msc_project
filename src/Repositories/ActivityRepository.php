@@ -33,11 +33,11 @@ class ActivityRepository
         $query = "
             SELECT r.id, r.name, r.owner, MAX(c.created_at) AS last_activity
             FROM repositories r
-            LEFT JOIN commits c ON r.id = c.repository_id
+                LEFT JOIN commits c ON r.id = c.repository_id
             WHERE r.git_token_id = :git_token_id AND r.is_active = 1
             GROUP BY r.id, r.name, r.owner
             HAVING last_activity < NOW() - INTERVAL $interval
-            OR last_activity IS NULL
+                OR last_activity IS NULL
         ";
 
         $stmt = $this->db->prepare($query);

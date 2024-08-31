@@ -79,4 +79,44 @@ class UserController
 
         return new SuccessResponse('User logout successful');
     }
+
+    public function getUser(): Response
+    {
+        $user = $this->service->getUser();
+        $alerts = $this->service->getUserAlerts();
+        return new SuccessResponse('User details', ['user' => $user, 'alerts' => $alerts]);
+    }
+
+    public function updateUser(): Response
+    {
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $input = array_merge(array('name' => '', 'password' => ''), $input);
+
+
+        // name must be alphnumeric and can include spaces and dots and 3 characters long atleast
+        if (!preg_match('/^[a-zA-Z0-9 .]{3,}$/', $input['name'])) {
+            throw new \ErrorException('Name must be alphanumeric and can include spaces and dots',  400, E_USER_WARNING);
+        }
+
+
+        if (!isset($input['password']) || !$input['password']) {
+            $input['password'] = "";
+        } else if (strlen($input['password']) < 8) {
+            throw new \ErrorException('Password must be at least 8 characters long',  400, E_USER_WARNING);
+        }
+
+        $this->service->updateUser($input['name'], $input['password']);
+
+        return new SuccessResponse('User details updated successfully');
+    }
+
+    public function updateAlerts(): Response
+    {
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $input = array_merge(array('inactivity' => true, 'sync' => true, 'realtime' => true), $input);
+
+        $this->service->updateAlerts($input['inactivity'], $input['sync'], $input['realtime']);
+
+        return new SuccessResponse('User alerts updated successfully');
+    }
 }

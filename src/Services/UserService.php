@@ -9,6 +9,7 @@ use MscProject\Repositories\SessionRepository;
 use MscProject\Models\User;
 use MscProject\Models\Session;
 use MscProject\Mailer;
+use MscProject\Models\Alert;
 use PHPMailer\PHPMailer\Exception as MailException;
 
 class UserService
@@ -88,6 +89,67 @@ class UserService
     public function logoutUser(string $apiKey): bool
     {
         return $this->sessionRepository->deleteSessionByApiKey($apiKey);
+    }
+
+    public function getUSer(int $id = 0): array
+    {
+        global $userSession;
+        if ($id == 0) {
+            $id = $userSession->getId();
+        }
+        $user = $this->userRepository->getUserById($id);
+
+        return [
+            'name' => $user->getName(),
+            'email' => $user->getEmail(),
+        ];
+    }
+
+    public function getUserAlerts(int $userId = 0): array
+    {
+        global $userSession;
+        if ($userId == 0) {
+            $userId = $userSession->getId();
+        }
+
+        $alert =  $this->userRepository->getUserAlerts($userId);
+        return [
+            'inactivity' => $alert->getInactivity(),
+            'sync' => $alert->getSync(),
+            'realtime' => $alert->getRealtime(),
+        ];
+    }
+
+    public function updateUser(string $name, string $password, int $id = 0): bool
+    {
+        global $userSession;
+        if ($id == 0) {
+            $id = $userSession->getId();
+        }
+        $user = $this->userRepository->getUserById($id);
+
+        if ($user === null) {
+            throw new \ErrorException('User not found',  404, E_USER_WARNING);
+        }
+
+        $user->setName($name);
+        if ($password) {
+            $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+            $user->setPassword($hashedPassword);
+        }
+
+        return $this->userRepository->updateUser($user);
+    }
+
+    public function updateAlerts(bool $inactivity, bool $sync, bool $realtime, int $userId = 0): bool
+    {
+        global $userSession;
+        if ($userId == 0) {
+            $userId = $userSession->getId();
+        }
+
+        $alert = new Alert($userId, $inactivity, $sync, $realtime);
+        return $this->userRepository->setUserAlerts($alert);
     }
 
     private function sendVerificationEmail(User $user): void
