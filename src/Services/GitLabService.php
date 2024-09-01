@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace MscProject\Services;
 
-use ErrorException;
 use MscProject\Repositories\GitRepository;
 use MscProject\Repositories\UserRepository;
-use MscProject\Services\GitProviderService;
+use ErrorException;
 
 class GitLabService extends GitProviderService
 {
@@ -23,106 +22,96 @@ class GitLabService extends GitProviderService
     public function authenticate(string $gitlabToken, string $url = null): void
     {
         $this->gitToken = $gitlabToken;
-        $this->gitlabAPIUrl =  "{$url}/api/v4" ?? 'https://campus.cs.le.ac.uk/gitlab/api/v4';
+        $this->gitlabAPIUrl = $url ? "{$url}/api/v4" : 'https://campus.cs.le.ac.uk/gitlab/api/v4';
         $this->username = $this->fetchUsername();
     }
 
     protected function fetchUsername(): string
     {
-        $url = $this->gitlabAPIUrl . "/user";
+        $url = "{$this->gitlabAPIUrl}/user";
         $response = $this->makeGetRequest($url);
 
-        return $response['username'];
+        return $response['username'] ?? '';
     }
 
     public function fetchRepositories(): array
     {
-        $url = $this->gitlabAPIUrl . "/projects?owned=true";
+        $url = "{$this->gitlabAPIUrl}/projects?owned=true";
         return $this->makeGetRequest($url);
     }
 
     public function fetchCommits(string $pathWithNamespace, string $branch = 'main'): array
     {
-        $url = $this->gitlabAPIUrl . "/projects/{$this->urlEncodeRepoName($pathWithNamespace)}/repository/commits?ref_name={$branch}&with_stats=true";
+        $url = "{$this->gitlabAPIUrl}/projects/{$this->urlEncodeRepoName($pathWithNamespace)}/repository/commits?ref_name={$branch}&with_stats=true";
         $commits = $this->makeGetRequest($url);
-        return array_reverse($commits);
+
+        return array_reverse($commits);  // Ensure commits are in the correct order
     }
 
     public function fetchCommitDetails(string $sha, string $pathWithNamespace): array
     {
-        $url = $this->gitlabAPIUrl . "/projects/{$this->urlEncodeRepoName($pathWithNamespace)}/repository/commits/{$sha}/diff";
+        $url = "{$this->gitlabAPIUrl}/projects/{$this->urlEncodeRepoName($pathWithNamespace)}/repository/commits/{$sha}/diff";
         return $this->makeGetRequest($url);
     }
 
     public function storeRepository(array $repository, int $gitTokenId, int $hookId): int
     {
-        $repositoryId = $this->gitRepository->storeRepository($gitTokenId, $repository['name'], $repository['web_url'], $repository['description'] ?? '', $repository['owner']['username'], $repository['default_branch'],  $hookId);
-        return $repositoryId;
+        return $this->gitRepository->storeRepository(
+            $gitTokenId,
+            $repository['name'],
+            $repository['web_url'],
+            $repository['description'] ?? '',
+            $repository['owner']['username'],
+            $repository['default_branch'],
+            $hookId
+        );
     }
 
     public function storeCommit(array $commit, array $commitDetails, int $repositoryId): int
     {
-        $commitId = $this->gitRepository->storeCommit(
+        return $this->gitRepository->storeCommit(
             $repositoryId,
             $commit['id'],
             $commit['author_email'] ?? $commit['committer_email'],
             $commit['message'],
             $commit['created_at'],
-            $commit['stats']['additions'],
-            $commit['stats']['deletions'],
-            $commit['stats']['total'],
-            $commitDetails['files']['stats']['number_of_comment_lines'],
-            $commitDetails['files']['stats']['commit_changes_quality_score'],
-            $commitDetails['files']['stats']['commit_message_quality_score'],
+            $commit['stats']['additions'] ?? 0,
+            $commit['stats']['deletions'] ?? 0,
+            $commit['stats']['total'] ?? 0,
+            $commitDetails['files']['stats']['number_of_comment_lines'] ?? 0,
+            $commitDetails['files']['stats']['commit_changes_quality_score'] ?? 0,
+            $commitDetails['files']['stats']['commit_message_quality_score'] ?? 0,
             $commitDetails['files']['files']
         );
-
-        return $commitId;
     }
 
     public function createWebhook(string $pathWithNamespace, string $defaultBranch): array
     {
         $hookData = [
             'name' => 'web',
-            'url' => $_ENV['BASE_URL'] . $_ENV['GITLAB_WEBHOOK_RESPONSE_URL'],
+            'url' => $this->getWebhookUrl(),
             'push_events' => true,
             'push_events_branch_filter' => $defaultBranch,
-            'merge_requests_events' => false,
-            'tag_push_events' => false,
-            'issues_events' => false,
             'enable_ssl_verification' => false,
         ];
 
-        if ($_ENV['ENV'] == 'dev') {
-            $hookData['url'] = $_ENV['DEV_GITLAB_WEBHOOK_RESPONSE_URL'];
-        }
+        $url = "{$this->gitlabAPIUrl}/projects/{$this->urlEncodeRepoName($pathWithNamespace)}/hooks";
 
-        $url = $this->gitlabAPIUrl . "/projects/{$this->urlEncodeRepoName($pathWithNamespace)}/hooks";
-
-        $response = $this->makePostRequest($url, $hookData);
-
-        return $response;
+        return $this->makePostRequest($url, $hookData);
     }
 
     public function updateWebhookStatus(string $pathWithNamespace, int $hookId, bool $status = false, int $repositoryId = 0): array
     {
         $hookData = [
-            'url' => $_ENV['BASE_URL'] . $_ENV['GITLAB_WEBHOOK_RESPONSE_URL'],
+            'url' => $this->getWebhookUrl(),
             'push_events' => $status,
-            'custom_headers' => array(
-                array(
-                    'key' => 'X-Custom-Webhook-Id',
-                    'value' => $repositoryId,
-                ),
-            ),
+            'custom_headers' => [[
+                'key' => 'X-Custom-Webhook-Id',
+                'value' => $repositoryId,
+            ]]
         ];
 
-
-        if ($_ENV['ENV'] == 'dev') {
-            $hookData['url'] = $_ENV['DEV_GITLAB_WEBHOOK_RESPONSE_URL'];
-        }
-
-        $url = $this->gitlabAPIUrl . "/projects/{$this->urlEncodeRepoName($pathWithNamespace)}/hooks/{$hookId}";
+        $url = "{$this->gitlabAPIUrl}/projects/{$this->urlEncodeRepoName($pathWithNamespace)}/hooks/{$hookId}";
         return $this->makePutRequest($url, $hookData);
     }
 
@@ -148,7 +137,7 @@ class GitLabService extends GitProviderService
                 parent::handlePushEvent($repository, $gitToken, $data['project']['path_with_namespace']);
                 break;
             default:
-                break;
+                throw new ErrorException("Event not supported.", 200);
         }
     }
 
@@ -172,14 +161,17 @@ class GitLabService extends GitProviderService
         $commitDetails = ['files' => $commitDetails];
 
         $commitDetails['files'] = array_map(fn($row) => array_merge([
-            'sha' => substr(hash('sha256', $row['new_path']), 0, 7),
+            'sha' => substr(hash('sha256', $row['new_path'] ?? $row['old_path']), 0, 7),
             'filename' => $row['new_path'] ?? $row['old_path'],
             'status' => $row['new_file'] ? 'added' : ($row['deleted_file'] ? 'deleted' : ($row['renamed_file'] ? 'renamed' : 'modified')),
-            'patch' => $row['diff'],
-        ], $this->gitAnalysisService->getChangeStat($row['diff'])), $commitDetails['files']);
+            'patch' => $row['diff'] ?? null,
+        ], $this->gitAnalysisService->getChangeStat($row['diff'] ?? '')), $commitDetails['files']);
 
         $commitAnalysis = $this->gitAnalysisService->analyzeCommit($commitDetails['files'], $commit['message']);
-        $commitDetails['files'] = ["files" => $commitAnalysis['files'], "stats" => array_merge($commit['stats'] ?? [], $commitAnalysis['stats'])];
+        $commitDetails['files'] = [
+            "files" => $commitAnalysis['files'],
+            "stats" => array_merge($commit['stats'] ?? [], $commitAnalysis['stats'])
+        ];
         $commitDetails['files']["files"] = array_map(fn($row) => [
             'sha' => $row['sha'],
             'filename' => $row['filename'],
@@ -194,77 +186,96 @@ class GitLabService extends GitProviderService
 
     public function listWebhooks(string $repoName): array
     {
-        $url = $this->gitlabAPIUrl . "/projects/{$this->urlEncodeRepoName($repoName)}/hooks";
+        $url = "{$this->gitlabAPIUrl}/projects/{$this->urlEncodeRepoName($repoName)}/hooks";
         return $this->makeGetRequest($url);
     }
 
     public function getCommitSummaries(array $commit, array $commitDetails): string
     {
-        // Format the commit summary string
         return sprintf(
             "Commit (%s): '%s' by '%s' on '%s'\n   Additions: %d, Deletions: %d, Total: %d\n",
             $commit['id'],
             trim(substr($commit['message'], 0, 10)) . '...',
             $commit['author_email'] ?? $commit['committer_email'],
             $commit['created_at'],
-            $commit['stats']['additions'],
-            $commit['stats']['deletions'],
-            $commit['stats']['total']
+            $commitDetails['stats']['additions'] ?? 0,
+            $commitDetails['stats']['deletions'] ?? 0,
+            $commitDetails['stats']['total'] ?? 0
         );
     }
 
     private function makeGetRequest(string $url): array
     {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $this->getAuthHeaders());
+        $response = $this->executeCurlRequest($url, 'GET');
 
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        return json_decode($response, true) ?? [];
+        return $this->handleApiResponse($response);
     }
 
     private function makePostRequest(string $url, array $data): array
     {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($this->getAuthHeaders(), [
-            'Content-Type: application/json',
-        ]));
+        $response = $this->executeCurlRequest($url, 'POST', $data);
 
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        return json_decode($response, true) ?? [];
+        return $this->handleApiResponse($response);
     }
 
     private function makePutRequest(string $url, array $data): array
     {
+        $response = $this->executeCurlRequest($url, 'PUT', $data);
+
+        return $this->handleApiResponse($response);
+    }
+
+    private function executeCurlRequest(string $url, string $method, array $data = []): string
+    {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($this->getAuthHeaders(), [
             'Content-Type: application/json',
         ]));
 
+        if ($method === 'POST') {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        } elseif ($method === 'PUT') {
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        }
+
         $response = curl_exec($ch);
+
+        if ($response === false) {
+            $error = curl_error($ch);
+            curl_close($ch);
+            throw new ErrorException("Curl request failed: $error", 500);
+        }
+
         curl_close($ch);
 
-        return json_decode($response, true) ?? [];
+        return $response;
+    }
+
+    private function handleApiResponse(string $response): array
+    {
+        $decodedResponse = json_decode($response, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new ErrorException('Failed to decode JSON response: ' . json_last_error_msg(), 500);
+        }
+
+        return $decodedResponse;
     }
 
     private function getAuthHeaders(): array
     {
         return [
-            "Private-Token: " . $this->gitToken,
+            "Private-Token: {$this->gitToken}",
         ];
+    }
+
+    private function getWebhookUrl(): string
+    {
+        return $_ENV['ENV'] === 'dev' ? $_ENV['DEV_GITLAB_WEBHOOK_RESPONSE_URL'] : $_ENV['BASE_URL'] . $_ENV['GITLAB_WEBHOOK_RESPONSE_URL'];
     }
 
     private function urlEncodeRepoName(string $pathWithNamespace): string

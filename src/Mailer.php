@@ -6,6 +6,7 @@ namespace MscProject;
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception as MailException;
+use ErrorException;
 
 class Mailer
 {
@@ -39,7 +40,7 @@ class Mailer
             $this->mail->Port = (int)$_ENV['SMTP_PORT'];
             $this->mail->setFrom($_ENV['SMTP_FROM'], $_ENV['SMTP_FROM_NAME']);
         } catch (MailException $e) {
-            throw new \ErrorException('Mailer configuration error: ' . $e->getMessage(), 500, previous: $e);
+            throw new ErrorException('Mailer configuration error: ' . $e->getMessage(), 500, previous: $e);
         }
     }
 
@@ -52,7 +53,9 @@ class Mailer
 
             // Attachments
             foreach ($attachments as $attachment) {
-                $this->mail->addAttachment($attachment);
+                if (file_exists($attachment)) {
+                    $this->mail->addAttachment($attachment);
+                }
             }
 
             // Content
@@ -62,7 +65,7 @@ class Mailer
 
             $this->mail->send();
         } catch (MailException $e) {
-            throw new \ErrorException("Email could not be sent to {$to}. Mailer Error: {$this->mail->ErrorInfo}" . $e->getMessage(), 500, previous: $e);
+            throw new ErrorException("Email could not be sent to {$to}. Mailer Error: {$this->mail->ErrorInfo}" . $e->getMessage(), 500, previous: $e);
         }
     }
 }

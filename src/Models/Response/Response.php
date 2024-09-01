@@ -17,6 +17,7 @@ abstract class Response
         $this->headers = $headers;
     }
 
+    // Getters
     public function getMessage(): string
     {
         return $this->message;
@@ -32,6 +33,7 @@ abstract class Response
         return $this->headers;
     }
 
+    // Sends the response
     public function send(): void
     {
         http_response_code($this->statusCode);
@@ -42,8 +44,10 @@ abstract class Response
         echo $this->toJson();
     }
 
+    // Abstract method that must be implemented by subclasses
     abstract public function toArray(): array;
 
+    // Converts the response to JSON
     public function toJson(): string
     {
         return json_encode($this->toArray());

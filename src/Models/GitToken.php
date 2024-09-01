@@ -29,6 +29,7 @@ class GitToken
         $this->lastFetchedAt = $lastFetchedAt;
     }
 
+    // Getters
     public function getId(): ?int
     {
         return $this->id;
@@ -72,5 +73,67 @@ class GitToken
     public function getLastFetchedAt(): ?string
     {
         return $this->lastFetchedAt;
+    }
+
+    // Setters
+    public function setId(?int $id): void
+    {
+        $this->id = $id;
+    }
+
+    public function setUserId(int $userId): void
+    {
+        $this->userId = $userId;
+    }
+
+    public function setToken(string $token): void
+    {
+        $this->token = $token;
+    }
+
+    public function setService(string $service): void
+    {
+        $this->service = $service;
+    }
+
+    public function setUrl(string $url): void
+    {
+        $this->url = $url;
+    }
+
+    public function setDescription(string $description): void
+    {
+        $this->description = $description;
+    }
+
+    public function setIsActive(bool $isActive): void
+    {
+        $this->isActive = $isActive;
+    }
+
+    public function setCreatedAt(?string $createdAt): void
+    {
+        $this->createdAt = $createdAt;
+    }
+
+    public function setLastFetchedAt(?string $lastFetchedAt): void
+    {
+        $this->lastFetchedAt = $lastFetchedAt;
+    }
+
+    // ToString method that returns JSON
+    public function __toString(): string
+    {
+        return json_encode([
+            'id' => $this->id,
+            'user_id' => $this->userId,
+            'token' => $this->token,
+            'service' => $this->service,
+            'url' => $this->url,
+            'description' => $this->description,
+            'is_active' => $this->isActive,
+            'created_at' => $this->createdAt,
+            'last_fetched_at' => $this->lastFetchedAt,
+        ]);
     }
 }

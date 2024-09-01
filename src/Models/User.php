@@ -21,14 +21,10 @@ class User
         $this->status = $status;
     }
 
+    // Getters
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function setId(int $id): void
-    {
-        $this->id = $id;
     }
 
     public function getName(): string
@@ -51,9 +47,20 @@ class User
         return $this->status;
     }
 
+    // Setters
+    public function setId(int $id): void
+    {
+        $this->id = $id;
+    }
+
     public function setName(string $name): void
     {
         $this->name = $name;
+    }
+
+    public function setEmail(string $email): void
+    {
+        $this->email = $email;
     }
 
     public function setPassword(string $password): void
@@ -64,5 +71,17 @@ class User
     public function setStatus(string $status): void
     {
         $this->status = $status;
+    }
+
+    // ToString method that returns JSON
+    public function __toString(): string
+    {
+        return json_encode([
+            'id' => $this->id,
+            'name' => $this->name,
+            'email' => $this->email,
+            'password' => $this->password,
+            'status' => $this->status,
+        ]);
     }
 }

@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace MscProject\Services;
 
-use Exception;
 use MscProject\Repositories\GitRepository;
 use MscProject\Models\GitToken;
 use MscProject\Utils;
-use Throwable;
+use InvalidArgumentException;
 
 class GitTokenService
 {
@@ -21,23 +20,21 @@ class GitTokenService
 
     public function storeGitToken(string $token, string $service, string $url, string $description, int $userId): bool
     {
-        $gitToken = $this->gitRepository->getTokenByToken($token);
-        if ($gitToken !== null) {
-            throw new \ErrorException('Token already exists',  409, E_USER_WARNING);
+        $existingToken = $this->gitRepository->getTokenByToken($token);
+        if ($existingToken !== null) {
+            throw new InvalidArgumentException('Token already exists', 409);
         }
 
-        $gitToken = new GitToken(null, $userId, $token, $service, $url, $description, false, null, null);
-        return $this->gitRepository->create($gitToken);
+        $newToken = new GitToken(null, $userId, $token, $service, $url, $description, false, null, null);
+        return $this->gitRepository->create($newToken);
     }
 
     public function list(int $userId = 0, bool $mask = false, string $service = ''): array
     {
         $gitTokens = $this->gitRepository->listTokens($userId, service: $service);
-        $res = [];
-        foreach ($gitTokens as $i => $gitToken) {
-            $token = $gitToken->getToken();
-            $token = $mask ? Utils::maskToken($token) : $token;
-            $res[] = [
+        return array_map(function (GitToken $gitToken) use ($mask) {
+            $token = $mask ? Utils::maskToken($gitToken->getToken()) : $gitToken->getToken();
+            return [
                 'id' => $gitToken->getId(),
                 'user_id' => $gitToken->getUserId(),
                 'token' => $token,
@@ -48,17 +45,29 @@ class GitTokenService
                 'created_at' => $gitToken->getCreatedAt(),
                 'last_fetched_at' => $gitToken->getLastFetchedAt() ?? 'Never',
             ];
-        }
-        return $res;
+        }, $gitTokens);
     }
 
     public function edit(int $tokenId, string $token, string $service, string $url, string $description, int $userId = 0): void
     {
         $gitToken = $this->gitRepository->getToken($tokenId, $userId);
-        if ($gitToken !== null) {
-            $gitToken = new GitToken($tokenId, $userId, $token, $service, $url, $description, $gitToken->isActive(), $gitToken->getCreatedAt(), $gitToken->getLastFetchedAt());
-            $this->gitRepository->updateToken($gitToken);
+        if ($gitToken === null) {
+            throw new InvalidArgumentException('Token not found');
         }
+
+        $updatedToken = new GitToken(
+            $tokenId,
+            $userId,
+            $token,
+            $service,
+            $url,
+            $description,
+            $gitToken->isActive(),
+            $gitToken->getCreatedAt(),
+            $gitToken->getLastFetchedAt()
+        );
+
+        $this->gitRepository->updateToken($updatedToken);
     }
 
     public function toggle(int $tokenId, bool $isActive, int $userId = 0): void
@@ -69,11 +78,14 @@ class GitTokenService
     public function delete(int $tokenId, int $userId = 0): void
     {
         $gitToken = $this->gitRepository->getToken($tokenId, $userId);
-        if ($gitToken !== null) {
+        if ($gitToken === null) {
             // TODO: Delete
             // $this->gitRepository->deleteRepositoriesByTokenId($tokenId);
-            $this->gitRepository->deleteToken($tokenId, $userId);
+
+            throw new InvalidArgumentException('Token not found');
         }
+
+        $this->gitRepository->deleteToken($tokenId, $userId);
     }
 
     public function updateFetchedAt(int $tokenId): void

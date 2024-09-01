@@ -16,13 +16,6 @@ class CommitFile
     private string $filename;
     private string $extension;
 
-    // "sha": "2539fd2",
-    // "status": "added",
-    // "changes": 56,
-    // "filename": "app.js",
-    // "additions": 56,
-    // "deletions": 0
-
     public function __construct(
         ?int $commitId,
         string $sha,
@@ -121,5 +114,20 @@ class CommitFile
     public function setExtension(string $extension): void
     {
         $this->extension = $extension;
+    }
+
+    // ToString method that returns JSON
+    public function __toString(): string
+    {
+        return json_encode([
+            'commit_id' => $this->commitId,
+            'sha' => $this->sha,
+            'status' => $this->status,
+            'additions' => $this->additions,
+            'deletions' => $this->deletions,
+            'total' => $this->total,
+            'filename' => $this->filename,
+            'extension' => $this->extension,
+        ]);
     }
 }

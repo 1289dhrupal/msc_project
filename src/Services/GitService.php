@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace MscProject\Services;
 
 use DateTime;
-use Exception;
 use MscProject\Repositories\GitRepository;
-use MscProject\Models\GitToken;
 use MscProject\Utils;
-use Throwable;
+use Exception;
 
 class GitService
 {
@@ -23,9 +21,8 @@ class GitService
     public function listRepositories(int $userId = 0, int $gitTokenId = 0, bool $mask = true): array
     {
         $repos = $this->gitRepository->listRepositories($userId, $gitTokenId);
-        $repositories = [];
-        foreach ($repos as $i => $repo) {
-            $repositories[] = [
+        $repositories = array_map(function ($repo) use ($mask) {
+            return [
                 'id' => $repo->getId(),
                 'git_token_id' => $repo->getGitTokenId(),
                 'name' => $repo->getName(),
@@ -38,27 +35,23 @@ class GitService
                 'created_at' => $repo->getCreatedAt(),
                 'last_fetched_at' => $repo->getLastFetchedAt() ?? 'Never',
             ];
-        }
+        }, $repos);
 
-        $gitTokenIds = $gitTokenId !== 0 ? "$gitTokenId" :  "";
-
-        $gitTokens = $this->gitRepository->listTokens($userId, $gitTokenIds);
-        foreach ($gitTokens as $i => $gitToken) {
-            $token = $gitToken->getToken();
-            $token = $mask ? Utils::maskToken($token, 4, 4) : $token;
-            $gitTokens[$i] = [
+        $gitTokens = $this->gitRepository->listTokens($userId, $gitTokenId !== 0 ? "$gitTokenId" : "");
+        $gitTokens = array_map(function ($gitToken) use ($mask) {
+            $token = $mask ? Utils::maskToken($gitToken->getToken(), 4, 4) : $gitToken->getToken();
+            return [
                 'id' => $gitToken->getId(),
                 'user_id' => $gitToken->getUserId(),
                 'is_active' => $gitToken->isActive(),
                 'token' => $token,
             ];
-        }
+        }, $gitTokens);
 
-        $res = [
+        return [
             'repositories' => $repositories,
             'git_tokens' => $gitTokens,
         ];
-        return $res;
     }
 
     public function toggleRepository(int $repoId, bool $isActive, int $userId = 0): void
@@ -72,7 +65,10 @@ class GitService
         if ($repo !== null) {
             // TODO: Delete
             // $this->gitRepository->deleteRepositoriesByTokenId($tokenId);
+
             $this->gitRepository->deleteRepository($repoId, $userId);
+        } else {
+            throw new Exception('Repository not found.');
         }
     }
 
@@ -84,10 +80,8 @@ class GitService
         }
 
         $commits = $this->gitRepository->listCommits($repoId, $userId);
-
-        $commitResponse = [];
-        foreach ($commits as $i => $commit) {
-            $commitResponse[$commit->getId()] = [
+        $commitResponse = array_map(function ($commit) {
+            return [
                 'id' => $commit->getId(),
                 'repository_id' => $commit->getRepositoryId(),
                 'sha' => $commit->getSha(),
@@ -98,30 +92,27 @@ class GitService
                 'deletions' => $commit->getDeletions(),
                 'total' => $commit->getTotal(),
             ];
-        }
+        }, $commits);
 
         if ($repoId == 0) {
             $commitResponse = array_slice($commitResponse, 0, 20);
         }
 
-        $repoIds = $repoId !== 0 ? "$repoId" :  "";
-
-        $repoIds = $this->gitRepository->listRepositories($userId, repoIds: $repoIds);
-        $repoResponse = [];
-        foreach ($repoIds as $i => $repoId) {
-            $repoResponse[$i] = [
-                'id' => $repoId->getId(),
-                'git_token_id' => $repoId->getGitTokenId(),
-                'name' => $repoId->getName(),
-                'url' => $repoId->getUrl(),
-                'owner' => $repoId->getOwner(),
-                'default_branch' => $repoId->getDefaultBranch(),
-                'hook_id' => $repoId->getHookId(),
-                'is_active' => $repoId->isActive(),
+        $repos = $this->gitRepository->listRepositories($userId, repoIds: $repoId !== 0 ? "$repoId" : "");
+        $repoResponse = array_map(function ($repo) {
+            return [
+                'id' => $repo->getId(),
+                'git_token_id' => $repo->getGitTokenId(),
+                'name' => $repo->getName(),
+                'url' => $repo->getUrl(),
+                'owner' => $repo->getOwner(),
+                'default_branch' => $repo->getDefaultBranch(),
+                'hook_id' => $repo->getHookId(),
+                'is_active' => $repo->isActive(),
             ];
-        }
+        }, $repos);
 
-        return ["commits" => array_values($commitResponse), "repositories" => $repoResponse];
+        return ["commits" => $commitResponse, "repositories" => $repoResponse];
     }
 
     public function getStats(int $repoId = 0, int $userId = 0): array
@@ -133,34 +124,56 @@ class GitService
 
         $commits = $this->gitRepository->listCommits($repoId, $userId, 'ASC');
 
-        $response = [];
+        $response = [
+            'churn_rates' => [],
+            'contribution' => [],
+            'weekly_stats' => array_fill(0, 52, []),
+        ];
+
         $totalLines = 0;
+        $previousCommitDate = null;
 
-        $current = null;
         foreach ($commits as $commit) {
-            $addtions = $commit->getAdditions();
+            $additions = $commit->getAdditions();
             $deletions = $commit->getDeletions();
-            $totalLines += ($addtions - $deletions);
+            $totalLines += ($additions - $deletions);
 
-            $churnRate = $totalLines == 0 ? 0 : ($addtions + $deletions) / $totalLines  * 100;
-            $previous = $current ?? strtotime($commit->getDate());
-            $current = strtotime($commit->getDate());
-            $leadTime = round(($current - $previous) / 3600 / 24) . "\n";
+            $churnRate = $totalLines == 0 ? 0 : ($additions + $deletions) / $totalLines * 100;
+
+            $currentCommitDate = strtotime($commit->getDate());
+            $leadTime = $previousCommitDate ? round(($currentCommitDate - $previousCommitDate) / 3600 / 24) : 0;
+            $previousCommitDate = $currentCommitDate;
 
             $response['churn_rates'][] = [
                 'churn_rate' => $churnRate,
                 'lead_time' => $leadTime,
-                'additions' => $addtions,
+                'additions' => $additions,
                 'deletions' => -$deletions,
                 'total' => $totalLines,
             ];
 
-            $response['contribution'][$commit->getAuthor()] = [
-                'count' => ($response['contribution'][$commit->getAuthor()]['count'] ?? 0) + 1,
-                'total' => ($response['contribution'][$commit->getAuthor()]['total'] ?? 0) + $commit->getTotal(),
-                'additions' => ($response['contribution'][$commit->getAuthor()]['additions'] ?? 0) + $addtions,
-                'deletions' => ($response['contribution'][$commit->getAuthor()]['deletions'] ?? 0) + $deletions,
-            ];
+            $author = $commit->getAuthor();
+            if (!isset($response['contribution'][$author])) {
+                $response['contribution'][$author] = [
+                    'count' => 0,
+                    'total' => 0,
+                    'additions' => 0,
+                    'deletions' => 0,
+                ];
+            }
+
+            $response['contribution'][$author]['count']++;
+            $response['contribution'][$author]['total'] += $commit->getTotal();
+            $response['contribution'][$author]['additions'] += $additions;
+            $response['contribution'][$author]['deletions'] += $deletions;
+
+            $date = new DateTime($commit->getDate());
+            $year = (int) $date->format('Y');
+            $month = (int) $date->format('m');
+            $hour = (int) $date->format('H');
+            $week = (int) $date->format('W');
+
+            $response['weekly_stats'][$week][$author] = ($response['weekly_stats'][$week][$author] ?? 0) + 1;
         }
 
         return $response;

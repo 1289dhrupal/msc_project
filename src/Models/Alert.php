@@ -19,7 +19,7 @@ class Alert
         $this->realtime = $realtime;
     }
 
-
+    // Getters
     public function getUserId(): int
     {
         return $this->userId;
@@ -40,6 +40,7 @@ class Alert
         return $this->realtime;
     }
 
+    // Setters
     public function setUserId(int $userId): void
     {
         $this->userId = $userId;
@@ -58,5 +59,16 @@ class Alert
     public function setRealtime(bool $realtime): void
     {
         $this->realtime = $realtime;
+    }
+
+    // ToString method that returns JSON
+    public function __toString(): string
+    {
+        return json_encode([
+            'user_id' => $this->userId,
+            'inactivity' => $this->inactivity,
+            'sync' => $this->sync,
+            'realtime' => $this->realtime
+        ]);
     }
 }

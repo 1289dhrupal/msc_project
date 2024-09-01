@@ -8,56 +8,39 @@ class Utils
 {
     public static function maskToken(string $token): string
     {
-        // Find the position of the first occurrence of '_' or '-'
+        // Identify the position of the first delimiter ('_' or '-')
         $delimiterPosition = strcspn($token, '_-');
 
         if ($delimiterPosition === strlen($token)) {
-            // If neither '_' nor '-' is found, return the original token
-            return $token;
+            // If no delimiter is found, mask the entire token except the last 4 characters
+            return str_repeat('*', strlen($token) - 4) . substr($token, -4);
         }
 
-        // Extract the prefix based on the first occurrence of '_' or '-'
+        // Split the token into parts: prefix, middle, and end
         $prefix = substr($token, 0, $delimiterPosition + 1);
-
-        // Keep the last 4 characters
         $end = substr($token, -4);
-
-        // Get the middle part of the token
         $middle = substr($token, strlen($prefix), -4);
 
-        // Determine how many characters to keep visible in the middle part
-        $visibleMiddleChars = min(3, strlen($middle)); // Keep at least 3 characters visible
-        $visibleMiddle = '';
-        $maskedMiddle = str_repeat('*', strlen($middle));
+        // Mask the middle section, keeping 3 characters visible if possible
+        $visibleMiddleChars = min(3, strlen($middle));
+        $maskedMiddle = str_repeat('*', strlen($middle) - $visibleMiddleChars);
 
-        if ($visibleMiddleChars > 0) {
-            // Randomly select characters to keep visible
-            $randomKeys = array_rand(str_split($middle), $visibleMiddleChars);
-
-            // Ensure $randomKeys is an array even if one key is selected
-            if (!is_array($randomKeys)) {
-                $randomKeys = [$randomKeys];
-            }
-
-            $visibleMiddleArray = str_split($middle);
-            foreach ($randomKeys as $key) {
-                $visibleMiddle .= $visibleMiddleArray[$key];
-                $maskedMiddle[$key] = $visibleMiddleArray[$key];
-            }
-        }
-
-        // Combine the masked token
-        $maskedToken = $prefix . $maskedMiddle . $end;
-        $maskedToken = preg_replace('/\*{3,}/', '***', $maskedToken);
+        // Show a few characters from the middle section randomly
+        $visibleMiddle = substr($middle, 0, $visibleMiddleChars);
+        $maskedToken = $prefix . $visibleMiddle . $maskedMiddle . $end;
 
         return $maskedToken;
     }
 
     public static function isCodeFile(string $fileName, int $fileChanges): bool
     {
+        // If the file should be skipped based on size or directory, return false
+        if (self::shouldSkipFile($fileName, $fileChanges)) {
+            return false;
+        }
+
         // List of common code file extensions
         $codeExtensions = [
-            'php',
             'html',
             'css',
             'js',
@@ -96,11 +79,9 @@ class Utils
             'rs'
         ];
 
-        // Extract the file extension
+        // Check if the file's extension is in the list of code file extensions
         $extension = self::getFileExtension($fileName);
-
-        // Check if the extension is in the list of code file extensions
-        return !Utils::shouldSkipFile($fileName, $fileChanges) && in_array($extension, $codeExtensions);
+        return in_array($extension, $codeExtensions, true);
     }
 
     public static function getFileExtension(string $fileName): string
@@ -114,6 +95,7 @@ class Utils
             return true;
         }
 
+        // Directories to exclude from processing
         $excludedDirectories = [
             'node_modules',
             '.venv',
@@ -128,7 +110,7 @@ class Utils
             '.settings'
         ];
 
-        // Normalize directory separators for consistency
+        // Normalize path separators for consistent checking
         $normalizedPath = str_replace('\\', '/', $filePath);
 
         foreach ($excludedDirectories as $dir) {

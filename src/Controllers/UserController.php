@@ -7,6 +7,8 @@ namespace MscProject\Controllers;
 use MscProject\Models\Response\Response;
 use MscProject\Models\Response\SuccessResponse;
 use MscProject\Services\UserService;
+use Exception;
+use ErrorException;
 
 class UserController
 {
@@ -19,104 +21,134 @@ class UserController
 
     public function register(): Response
     {
-        $input = $_POST;
-        $input = array_merge(array('name' => '', 'email' => '', 'password' => ''), $input);
+        try {
+            $input = $_POST;
+            $input = array_merge(['name' => '', 'email' => '', 'password' => ''], $input);
 
-        // name must be alphnumeric and can include spaces and dots and 3 characters long atleast
-        if (!preg_match('/^[a-zA-Z0-9 .]{3,}$/', $input['name'])) {
-            throw new \ErrorException('Name must be alphanumeric and can include spaces and dots',  400, E_USER_WARNING);
+            if (!preg_match('/^[a-zA-Z0-9 .]{3,}$/', $input['name'])) {
+                throw new ErrorException('Name must be alphanumeric and can include spaces and dots', 400, E_USER_WARNING);
+            }
+
+            if (!filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {
+                throw new ErrorException('Invalid email address', 400, E_USER_WARNING);
+            }
+
+            if (strlen($input['password']) < 8) {
+                throw new ErrorException('Password must be at least 8 characters long', 400, E_USER_WARNING);
+            }
+
+            $this->service->registerUser($input['name'], $input['email'], $input['password']);
+
+            return new SuccessResponse('Please check your email to verify your account before logging in.');
+        } catch (Exception $e) {
+            throw new ErrorException('Failed to register user', 400, E_USER_WARNING, previous: $e);
         }
-
-        if (!filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {
-            throw new \ErrorException('Invalid email address', 400, E_USER_WARNING);
-        }
-
-        if (strlen($input['password']) < 8) {
-            throw new \ErrorException('Password must be at least 8 characters long',  400, E_USER_WARNING);
-        }
-
-        $this->service->registerUser($input['name'], $input['email'], $input['password']);
-
-        return new SuccessResponse('Please check your email to verify your account before logging in.');
     }
 
     public function verify(): Response
     {
-        $input = array_merge(array('email' => '', 'token' => ''), $_GET);
+        try {
+            $input = array_merge(['email' => '', 'token' => ''], $_GET);
 
-        if (!filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {
-            throw new \ErrorException('Invalid email address', 400, E_USER_WARNING);
+            if (!filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {
+                throw new ErrorException('Invalid email address', 400, E_USER_WARNING);
+            }
+
+            $this->service->verifyUser($input['email'], $input['token']);
+
+            return new SuccessResponse('Email verified successfully.');
+        } catch (Exception $e) {
+            throw new ErrorException('Failed to verify email', 400, E_USER_WARNING, previous: $e);
         }
-
-        $this->service->verifyUser($input['email'], $input['token']);
-        return new SuccessResponse('Email verified successfully.');
     }
 
     public function login(): Response
     {
-        $input = $_POST ?: [];
-        $input = array_merge(array('email' => '', 'password' => ''), $input);
+        try {
+            $input = $_POST ?: [];
+            $input = array_merge(['email' => '', 'password' => ''], $input);
 
-        if (!filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {
-            throw new \ErrorException('Invalid email address',  401, E_USER_WARNING);
+            if (!filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {
+                throw new ErrorException('Invalid email address', 401, E_USER_WARNING);
+            }
+
+            if (strlen($input['password']) < 8) {
+                throw new ErrorException('Password must be at least 8 characters long', 401, E_USER_WARNING);
+            }
+
+            $apiKey = $this->service->loginUser($input['email'], $input['password']);
+
+            return new SuccessResponse('User login successful', ['apiKey' => $apiKey]);
+        } catch (Exception $e) {
+            throw new ErrorException('Failed to log in', 401, E_USER_WARNING, previous: $e);
         }
-
-        if (strlen($input['password']) < 8) {
-            throw new \ErrorException('Password must be at least 8 characters long',  401, E_USER_WARNING);
-        }
-
-        $apiKey = $this->service->loginUser($input['email'], $input['password']);
-
-        return new SuccessResponse('User login successful', ['apiKey' => $apiKey]);
     }
 
     public function logout(): Response
     {
-        $headers = apache_request_headers();
-        $apiKey = $headers['Authorization'] ?? '';
+        try {
+            $headers = apache_request_headers();
+            $apiKey = $headers['Authorization'] ?? '';
 
-        $this->service->logoutUser($apiKey);
+            $this->service->logoutUser($apiKey);
 
-        return new SuccessResponse('User logout successful');
+            return new SuccessResponse('User logout successful');
+        } catch (Exception $e) {
+            throw new ErrorException('Failed to log out', 400, E_USER_WARNING, previous: $e);
+        }
     }
 
     public function getUser(): Response
     {
-        $user = $this->service->getUser();
-        $alerts = $this->service->getUserAlerts();
-        return new SuccessResponse('User details', ['user' => $user, 'alerts' => $alerts]);
+        try {
+            global $userSession;
+
+            $user = $this->service->getUser($userSession->getId());
+            $alerts = $this->service->getUserAlerts($userSession->getId());
+
+            return new SuccessResponse('User details', ['user' => $user, 'alerts' => $alerts]);
+        } catch (Exception $e) {
+            throw new ErrorException('Failed to get user details', 400, E_USER_WARNING, previous: $e);
+        }
     }
 
     public function updateUser(): Response
     {
-        $input = json_decode(file_get_contents('php://input'), true) ?: [];
-        $input = array_merge(array('name' => '', 'password' => ''), $input);
+        try {
+            global $userSession;
 
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $input = array_merge(['name' => '', 'password' => ''], $input);
 
-        // name must be alphnumeric and can include spaces and dots and 3 characters long atleast
-        if (!preg_match('/^[a-zA-Z0-9 .]{3,}$/', $input['name'])) {
-            throw new \ErrorException('Name must be alphanumeric and can include spaces and dots',  400, E_USER_WARNING);
+            if (!preg_match('/^[a-zA-Z0-9 .]{3,}$/', $input['name'])) {
+                throw new ErrorException('Name must be alphanumeric and can include spaces and dots', 400, E_USER_WARNING);
+            }
+
+            if (isset($input['password']) && strlen($input['password']) > 0 && strlen($input['password']) < 8) {
+                throw new ErrorException('Password must be at least 8 characters long', 400, E_USER_WARNING);
+            }
+
+            $this->service->updateUser($input['name'], $input['password'], $userSession->getId());
+
+            return new SuccessResponse('User details updated successfully');
+        } catch (Exception $e) {
+            throw new ErrorException('Failed to update user details', 400, E_USER_WARNING, previous: $e);
         }
-
-
-        if (!isset($input['password']) || !$input['password']) {
-            $input['password'] = "";
-        } else if (strlen($input['password']) < 8) {
-            throw new \ErrorException('Password must be at least 8 characters long',  400, E_USER_WARNING);
-        }
-
-        $this->service->updateUser($input['name'], $input['password']);
-
-        return new SuccessResponse('User details updated successfully');
     }
 
     public function updateAlerts(): Response
     {
-        $input = json_decode(file_get_contents('php://input'), true) ?: [];
-        $input = array_merge(array('inactivity' => true, 'sync' => true, 'realtime' => true), $input);
+        try {
+            global $userSession;
 
-        $this->service->updateAlerts($input['inactivity'], $input['sync'], $input['realtime']);
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $input = array_merge(['inactivity' => true, 'sync' => true, 'realtime' => true], $input);
 
-        return new SuccessResponse('User alerts updated successfully');
+            $this->service->updateAlerts($input['inactivity'], $input['sync'], $input['realtime'], $userSession->getId());
+
+            return new SuccessResponse('User alerts updated successfully');
+        } catch (Exception $e) {
+            throw new ErrorException('Failed to update user alerts', 400, E_USER_WARNING, previous: $e);
+        }
     }
 }

@@ -8,6 +8,7 @@ use MscProject\Services\GitService;
 use MscProject\Models\Response\SuccessResponse;
 use MscProject\Models\Response\Response;
 use Exception;
+use ErrorException;
 
 class GitController
 {
@@ -20,31 +21,30 @@ class GitController
 
     public function listRepositories(): Response
     {
-        $input = array_merge(array('git_token_id' => 0), $_GET);
-        $gitTokenId = intval($input['git_token_id']);
+        $gitTokenId = intval($_GET['git_token_id'] ?? 0);
 
         try {
             global $userSession;
+
             $repositories = $this->gitService->listRepositories($userSession->getId(), $gitTokenId);
-            return new SuccessResponse("Successfully Fetched Respositories", $repositories);
+            return new SuccessResponse("Successfully fetched repositories", $repositories);
         } catch (Exception $e) {
-            throw new \ErrorException('Failed to fetch repositories', 400, E_USER_WARNING, previous: $e);
+            throw new ErrorException('Failed to fetch repositories', 400, E_USER_WARNING, previous: $e);
         }
     }
 
     public function toggleRepository(int $repositoryId): Response
     {
-        global $userSession;
-
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
-        $input = array_merge(['is_active' => true], $input);
+        $isActive = filter_var($input['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN);
 
         try {
-            $isActive = filter_var($input['is_active'], FILTER_VALIDATE_BOOLEAN);
+            global $userSession;
+
             $this->gitService->toggleRepository($repositoryId, $isActive, $userSession->getId());
-            return new SuccessResponse("Updated the status for token ID: $repositoryId");
+            return new SuccessResponse("Updated the status for repository ID: $repositoryId");
         } catch (Exception $e) {
-            throw new \ErrorException('Failed to toggle repository', 400, E_USER_WARNING, previous: $e);
+            throw new ErrorException('Failed to toggle repository', 400, E_USER_WARNING, previous: $e);
         }
     }
 
@@ -52,10 +52,11 @@ class GitController
     {
         try {
             global $userSession;
+
             $this->gitService->deleteRepository($repositoryId, $userSession->getId());
             return new SuccessResponse("Deleted the repository with ID: $repositoryId");
         } catch (Exception $e) {
-            throw new \ErrorException('Failed to delete repository', 400, E_USER_WARNING, previous: $e);
+            throw new ErrorException('Failed to delete repository', 400, E_USER_WARNING, previous: $e);
         }
     }
 
@@ -63,18 +64,23 @@ class GitController
     {
         try {
             global $userSession;
+
             $commits = $this->gitService->listCommits($repositoryId, $userSession->getId());
-            return new SuccessResponse("Successfully Fetched Commits", $commits);
+            return new SuccessResponse("Successfully fetched commits", $commits);
         } catch (Exception $e) {
-            throw new \ErrorException('Failed to fetch commits', 400, E_USER_WARNING, previous: $e);
+            throw new ErrorException('Failed to fetch commits', 400, E_USER_WARNING, previous: $e);
         }
     }
 
     public function getStats(int $repositoryId = 0): Response
     {
-        global $userSession;
-        $stats = $this->gitService->getStats($repositoryId, $userSession->getId());
+        try {
+            global $userSession;
 
-        return new SuccessResponse("Successfully Fetched Stats", $stats);
+            $stats = $this->gitService->getStats($repositoryId, $userSession->getId());
+            return new SuccessResponse("Successfully fetched stats", $stats);
+        } catch (Exception $e) {
+            throw new ErrorException('Failed to fetch stats', 400, E_USER_WARNING, previous: $e);
+        }
     }
 }

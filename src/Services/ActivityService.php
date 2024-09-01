@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace MscProject\Services;
 
 use MscProject\Repositories\ActivityRepository;
-use MscProject\Mailer;
 use MscProject\Repositories\UserRepository;
+use MscProject\Mailer;
+use ErrorException;
 
 class ActivityService
 {
@@ -26,13 +27,19 @@ class ActivityService
 
         foreach ($users as $user) {
             $alerts = $this->userRepository->getUserAlerts($user['user_id']);
-            if ($alerts->getInactivity() === false) {
+            if (!$alerts->getInactivity()) {
                 continue;
             }
-            $csvFiles = $this->generateCsvReportsForUser($user, $intervals);
 
-            $this->sendEmailWithReports($user['email'], $csvFiles);
-            $this->cleanupFiles($csvFiles);
+            try {
+                $csvFiles = $this->generateCsvReportsForUser($user, $intervals);
+                $this->sendEmailWithReports($user['email'], $csvFiles);
+            } catch (ErrorException $e) {
+                // Log the exception or handle it as necessary
+                // Log::error("Failed to generate/send reports for user {$user['user_id']}: " . $e->getMessage());
+            } finally {
+                $this->cleanupFiles($csvFiles ?? []);
+            }
         }
     }
 
@@ -66,12 +73,20 @@ class ActivityService
         $filename = "inactive_repositories_{$userId}_{$intervalKey}.csv";
         $file = fopen($filename, 'w');
 
+        if (!$file) {
+            throw new ErrorException("Failed to create CSV file: $filename", 500);
+        }
+
         // Write CSV headers
-        fputcsv($file, ['ID', 'Name', 'Owner', 'Last Activity']);
+        if (fputcsv($file, ['ID', 'Name', 'Owner', 'Last Activity']) === false) {
+            throw new ErrorException("Failed to write to CSV file: $filename", 500);
+        }
 
         // Write repository data
         foreach ($repositories as $repo) {
-            fputcsv($file, [$repo['id'], $repo['name'], $repo['owner'], $repo['last_activity']]);
+            if (fputcsv($file, [$repo['id'], $repo['name'], $repo['owner'], $repo['last_activity']]) === false) {
+                throw new ErrorException("Failed to write to CSV file: $filename", 500);
+            }
         }
 
         fclose($file);
@@ -81,17 +96,22 @@ class ActivityService
 
     private function sendEmailWithReports(string $email, array $csvFiles): void
     {
-        $mailer = Mailer::getInstance();
         $subject = 'Inactive Repositories Report';
         $body = 'Attached are the reports of repositories with no activity in the last 1 week, 1 fortnight, and 1 month.';
 
-        $mailer->sendEmail($email, $subject, $body, $csvFiles);
+        $mailer = Mailer::getInstance();
+        if (!$mailer->sendEmail($email, $subject, $body, $csvFiles)) {
+            throw new ErrorException("Failed to send email to $email", 500);
+        }
     }
 
     private function cleanupFiles(array $csvFiles): void
     {
         foreach ($csvFiles as $filename) {
-            unlink($filename);
+            if (file_exists($filename) && !unlink($filename)) {
+                // Log this as a warning or handle it as necessary
+                throw new ErrorException("Failed to delete file: $filename", 500);
+            }
         }
     }
 }

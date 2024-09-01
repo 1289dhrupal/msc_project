@@ -10,11 +10,11 @@ use PDOException;
 class Database
 {
     private static ?Database $instance = null;
-    private PDO $connection;
+    private ?PDO $connection = null;
 
     private function __construct()
     {
-        $this->configure();
+        // Private constructor to prevent direct instantiation.
     }
 
     public static function getInstance(): Database
@@ -28,17 +28,35 @@ class Database
 
     private function configure(): void
     {
-        try {
-            $dsn = "mysql:host={$_ENV['DB_HOST']};dbname={$_ENV['DB_NAME']}";
-            $this->connection = new PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASS']);
-            $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        } catch (PDOException $e) {
-            throw new PDOException("Database connection error: " . $e->getMessage(), 500, $e);
+        if ($this->connection === null) {
+            try {
+                $dsn = sprintf("mysql:host=%s;dbname=%s", $_ENV['DB_HOST'], $_ENV['DB_NAME']);
+                $this->connection = new PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASS']);
+                $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            } catch (PDOException $e) {
+                throw new PDOException("Database connection error: " . $e->getMessage(), 500, $e);
+            }
         }
     }
 
     public function getConnection(): PDO
     {
+        $this->configure(); // Ensure the connection is established.
         return $this->connection;
+    }
+
+    public function beginTransaction(): void
+    {
+        $this->getConnection()->beginTransaction();
+    }
+
+    public function commit(): void
+    {
+        $this->getConnection()->commit();
+    }
+
+    public function rollback(): void
+    {
+        $this->getConnection()->rollBack();
     }
 }

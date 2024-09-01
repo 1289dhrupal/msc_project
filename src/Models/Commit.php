@@ -59,6 +59,7 @@ class Commit
         $this->files = $files;
     }
 
+    // Getters
     public function getId(): int
     {
         return $this->id;
@@ -130,5 +131,97 @@ class Commit
     public function getCreatedAt(): string
     {
         return $this->createdAt;
+    }
+
+    // Setters
+    public function setId(int $id): void
+    {
+        $this->id = $id;
+    }
+
+    public function setRepositoryId(int $repositoryId): void
+    {
+        $this->repositoryId = $repositoryId;
+    }
+
+    public function setSha(string $sha): void
+    {
+        $this->sha = $sha;
+    }
+
+    public function setMessage(string $message): void
+    {
+        $this->message = $message;
+    }
+
+    public function setDate(string $date): void
+    {
+        $this->date = $date;
+    }
+
+    public function setAuthor(string $author): void
+    {
+        $this->author = $author;
+    }
+
+    public function setAdditions(int $additions): void
+    {
+        $this->additions = $additions;
+    }
+
+    public function setDeletions(int $deletions): void
+    {
+        $this->deletions = $deletions;
+    }
+
+    public function setTotal(int $total): void
+    {
+        $this->total = $total;
+    }
+
+    public function setNumberOfCommentLines(int $numberOfCommentLines): void
+    {
+        $this->numberOfCommentLines = $numberOfCommentLines;
+    }
+
+    public function setCommitChangesQualityScore(int $commitChangesQualityScore): void
+    {
+        $this->commitChangesQualityScore = $commitChangesQualityScore;
+    }
+
+    public function setCommitMessageQualityScore(int $commitMessageQualityScore): void
+    {
+        $this->commitMessageQualityScore = $commitMessageQualityScore;
+    }
+
+    public function setFiles(array $files): void
+    {
+        $this->files = $files;
+    }
+
+    public function setCreatedAt(string $createdAt): void
+    {
+        $this->createdAt = $createdAt;
+    }
+
+    // ToString method that returns JSON
+    public function __toString(): string
+    {
+        return json_encode([
+            'id' => $this->id,
+            'repository_id' => $this->repositoryId,
+            'sha' => $this->sha,
+            'message' => $this->message,
+            'date' => $this->date,
+            'author' => $this->author,
+            'additions' => $this->additions,
+            'deletions' => $this->deletions,
+            'total' => $this->total,
+            'number_of_comment_lines' => $this->numberOfCommentLines,
+            'commit_changes_quality_score' => $this->commitChangesQualityScore,
+            'commit_message_quality_score' => $this->commitMessageQualityScore,
+            'files' => $this->files,
+            'created_at' => $this->createdAt
+        ]);
     }
 }

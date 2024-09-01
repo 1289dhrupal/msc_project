@@ -11,6 +11,8 @@ use MscProject\Models\Session;
 use MscProject\Mailer;
 use MscProject\Models\Alert;
 use PHPMailer\PHPMailer\Exception as MailException;
+use RuntimeException;
+use ErrorException;
 
 class UserService
 {
@@ -28,35 +30,40 @@ class UserService
         $user = $this->userRepository->getUserByEmail($email);
 
         if ($user !== null) {
-            throw new \ErrorException('User already exists',  409, E_USER_WARNING);
+            throw new ErrorException('User already exists',  409, E_USER_WARNING);
         }
 
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
         $user = new User(null, $name, $email, $hashedPassword, 'pending');
         $userId = $this->userRepository->createUser($user);
-        if ($userId !== 0) {
-            $user->setId($userId);
-            $this->sendVerificationEmail($user);
-            return true;
+
+        if ($userId === 0) {
+            return false;
         }
 
-        return false;
+        $user->setId($userId);
+        $this->sendVerificationEmail($user);
+        return true;
     }
 
     public function verifyUser(string $email, string $token): bool
     {
         $user = $this->userRepository->getUserByEmail($email);
 
+        if ($user === null) {
+            throw new ErrorException('User not found',  404, E_USER_WARNING);
+        }
+
         if ($user->getStatus() === 'active') {
-            throw new \ErrorException('User already verified',  400, E_USER_WARNING);
+            throw new ErrorException('User already verified',  400, E_USER_WARNING);
         }
 
         if ($user->getStatus() === 'inactive') {
-            throw new \ErrorException('User account is inactive, please contact the admin',  403, E_USER_WARNING);
+            throw new ErrorException('User account is inactive, please contact the admin',  403, E_USER_WARNING);
         }
 
-        if ($user === null || !password_verify($user->getId() . $user->getEmail(), $token)) {
-            throw new \ErrorException('Verification token is invalid',  401, E_USER_WARNING);
+        if (!password_verify($user->getId() . $user->getEmail(), $token)) {
+            throw new ErrorException('Verification token is invalid',  401, E_USER_WARNING);
         }
 
         $user->setStatus('active');
@@ -68,21 +75,22 @@ class UserService
         $user = $this->userRepository->getUserByEmail($email);
 
         if ($user === null || !password_verify($password, $user->getPassword())) {
-            throw new \ErrorException('Incorrect Credentials',  401, E_USER_WARNING);
+            throw new ErrorException('Incorrect Credentials',  401, E_USER_WARNING);
         }
 
         if ($user->getStatus() === 'pending') {
-            throw new \ErrorException('User account is pending email verification', 403, E_USER_WARNING);
+            throw new ErrorException('User account is pending email verification', 403, E_USER_WARNING);
         }
 
         if ($user->getStatus() === 'inactive') {
-            throw new \ErrorException('User account is inactive, please contact the admin',  403, E_USER_WARNING);
+            throw new ErrorException('User account is inactive, please contact the admin',  403, E_USER_WARNING);
         }
 
         $apiKey = bin2hex(random_bytes(32));
         $session = new Session($user->getId(), $apiKey);
         $this->sessionRepository->createSession($session);
         $this->userRepository->updateUserLastAccessed($user->getId());
+
         return $apiKey;
     }
 
@@ -91,13 +99,13 @@ class UserService
         return $this->sessionRepository->deleteSessionByApiKey($apiKey);
     }
 
-    public function getUSer(int $id = 0): array
+    public function getUser(int $id): array
     {
-        global $userSession;
-        if ($id == 0) {
-            $id = $userSession->getId();
-        }
         $user = $this->userRepository->getUserById($id);
+
+        if ($user === null) {
+            throw new ErrorException('User not found',  404, E_USER_WARNING);
+        }
 
         return [
             'name' => $user->getName(),
@@ -105,14 +113,14 @@ class UserService
         ];
     }
 
-    public function getUserAlerts(int $userId = 0): array
+    public function getUserAlerts(int $userId): array
     {
-        global $userSession;
-        if ($userId == 0) {
-            $userId = $userSession->getId();
+        $alert = $this->userRepository->getUserAlerts($userId);
+
+        if ($alert === null) {
+            throw new ErrorException('Alerts not found for the user',  404, E_USER_WARNING);
         }
 
-        $alert =  $this->userRepository->getUserAlerts($userId);
         return [
             'inactivity' => $alert->getInactivity(),
             'sync' => $alert->getSync(),
@@ -120,20 +128,17 @@ class UserService
         ];
     }
 
-    public function updateUser(string $name, string $password, int $id = 0): bool
+    public function updateUser(string $name, string $password, int $id): bool
     {
-        global $userSession;
-        if ($id == 0) {
-            $id = $userSession->getId();
-        }
         $user = $this->userRepository->getUserById($id);
 
         if ($user === null) {
-            throw new \ErrorException('User not found',  404, E_USER_WARNING);
+            throw new ErrorException('User not found',  404, E_USER_WARNING);
         }
 
         $user->setName($name);
-        if ($password) {
+
+        if (!empty($password)) {
             $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
             $user->setPassword($hashedPassword);
         }
@@ -141,13 +146,8 @@ class UserService
         return $this->userRepository->updateUser($user);
     }
 
-    public function updateAlerts(bool $inactivity, bool $sync, bool $realtime, int $userId = 0): bool
+    public function updateAlerts(bool $inactivity, bool $sync, bool $realtime, int $userId): bool
     {
-        global $userSession;
-        if ($userId == 0) {
-            $userId = $userSession->getId();
-        }
-
         $alert = new Alert($userId, $inactivity, $sync, $realtime);
         return $this->userRepository->setUserAlerts($alert);
     }
@@ -155,16 +155,16 @@ class UserService
     private function sendVerificationEmail(User $user): void
     {
         $mailer = Mailer::getInstance();
+
         try {
-            // Email details
             $to = $user->getEmail();
             $subject = 'Email Verification';
-            $body = $this->getVerificationEmailBody($user->getEmail(), password_hash($user->getId() . $user->getEmail(), PASSWORD_BCRYPT));
+            $token = password_hash($user->getId() . $user->getEmail(), PASSWORD_BCRYPT);
+            $body = $this->getVerificationEmailBody($user->getEmail(), $token);
 
-            // Send email
             $mailer->sendEmail($to, $subject, $body);
-        } catch (\Exception $e) {
-            throw new \Exception('Verification email could not be sent. Error: ' . $e->getMessage(), 500, previous: $e);
+        } catch (MailException $e) {
+            throw new RuntimeException('Verification email could not be sent. Error: ' . $e->getMessage(), 500, $e);
         }
     }
 

@@ -6,25 +6,30 @@ namespace MscProject\Models\Response;
 
 class SuccessResponse extends Response
 {
-    private $data;
+    private mixed $data;
 
-    public function __construct(string $message, $data = null, int $statusCode = 200, array $headers = [])
+    public function __construct(string $message, mixed $data = null, int $statusCode = 200, array $headers = [])
     {
         parent::__construct($message, $statusCode, $headers);
         $this->data = $data;
     }
 
-    public function getData()
+    public function getData(): mixed
     {
         return $this->data;
     }
 
     public function toArray(): array
     {
-        $response = ['success' => true, 'message' => $this->message];
+        $response = [
+            'success' => true,
+            'message' => $this->message,
+        ];
+
         if ($this->data !== null) {
             $response['data'] = $this->data;
         }
+
         return $response;
     }
 }

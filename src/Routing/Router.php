@@ -6,6 +6,8 @@ namespace MscProject\Routing;
 
 use MscProject\Models\Response\ErrorResponse;
 use MscProject\Models\Response\Response;
+use Exception;
+use ErrorException;
 
 class Router
 {
@@ -33,7 +35,11 @@ class Router
 
     private static function add(string $requestType, string $pattern, string $controller, string $method, array $middleware = []): void
     {
-        self::$routes[$requestType][$pattern] = ['class' => $controller, 'method' => $method, 'middleware' => $middleware];
+        self::$routes[$requestType][$pattern] = [
+            'class' => $controller,
+            'method' => $method,
+            'middleware' => $middleware,
+        ];
     }
 
     public static function dispatch(string $requestMethod, string $requestUri): void
@@ -42,21 +48,25 @@ class Router
             $route = self::matchRoute($requestUri, self::$routes[$requestMethod] ?? []);
 
             if (!$route) {
-                throw new \ErrorException('Route not found', 404, E_USER_ERROR);
+                throw new ErrorException('Route not found', 404, E_USER_ERROR);
             }
 
-            // Check for middleware and authenticate if necessary
+            // Execute middleware
             foreach ($route['middleware'] as $middleware) {
                 Orchestrator::getInstance()->get($middleware)->execute();
             }
 
             $response = self::handleRequest($route);
-        } catch (\ErrorException $e) {
+        } catch (ErrorException $e) {
             $response = new ErrorResponse($e->getMessage(), 'Internal Server Error: ' . $e->getTraceAsString(), $e->getCode());
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $response = new ErrorResponse('Something went wrong', 'Internal Server Error: ' . $e->getTraceAsString(), 500);
         } finally {
-            $response->send();
+            if (isset($response)) {
+                $response->send();
+            } else {
+                (new ErrorResponse('Unknown Error', 'An unknown error occurred', 500))->send();
+            }
         }
     }
 
@@ -70,7 +80,7 @@ class Router
             $pattern = preg_replace('/\$\{[^\}]+\}/', '([^/]+)', $pattern);
 
             if (preg_match("#^$pattern$#", $requestUri, $params)) {
-                array_shift($params);
+                array_shift($params); // Remove the full match
                 $routeInfo['params'] = $params;
                 return $routeInfo;
             }
@@ -83,10 +93,10 @@ class Router
     {
         $instance = Orchestrator::getInstance()->get($route['class']);
 
-        if (!$instance or !method_exists($instance, $route['method'])) {
-            throw new \ErrorException('Implementation not found', 500, severity: E_USER_ERROR);
+        if (!$instance || !method_exists($instance, $route['method'])) {
+            throw new ErrorException('Implementation not found', 500, E_USER_ERROR);
         }
 
-        return call_user_func_array([$instance, $route['method']], $route['params']);
+        return call_user_func_array([$instance, $route['method']], $route['params'] ?? []);
     }
 }

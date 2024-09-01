@@ -7,9 +7,10 @@ namespace MscProject\Controllers;
 use MscProject\Models\Response\Response;
 use MscProject\Models\Response\SuccessResponse;
 use MscProject\Repositories\GitRepository;
-use MscProject\Services\UserService;
 use MscProject\Utils;
 use DateTime;
+use Exception;
+use ErrorException;
 
 class DashboardController
 {
@@ -22,60 +23,71 @@ class DashboardController
 
     public function overallStats(): Response
     {
-        global $userSession;
+        try {
 
-        $repoID = intval($_GET['repository_id'] ?? 0);
-        $commits = $this->gitRepository->listCommits($repoID, $userSession->getId());
-        $response = [];
+            global $userSession;
+            $repoID = intval($_GET['repository_id'] ?? 0);
 
-        foreach ($commits as $commit) {
-            // Split the date and time
-            $dateTime = explode(' ', $commit->getDate());
-            $time = explode(':', $dateTime[1]);
+            $commits = $this->gitRepository->listCommits($repoID, $userSession->getId());
 
-            // Get year and month number from the commit date
-            $date = new DateTime($commit->getDate());
-            $year = intval($date->format('Y'));
-            $month = intval($date->format('m'));
+            // Initialize response structure
+            $response = [
+                'monthly_stats' => [],
+                'hourly_stats' => array_fill(0, 24, 0),
+                'user_stats' => [],
+                'repository_stats' => []
+            ];
 
-            // Initialize monthly stats array for the specific year if not set
-            if (!isset($response['monthly_stats'][$year])) {
-                $response['monthly_stats'][$year] = array_fill(0, 13, 0); // 0-52 months
-            }
+            foreach ($commits as $commit) {
+                // Extract date and time components
+                $date = new DateTime($commit->getDate());
+                $year = (int) $date->format('Y');
+                $month = (int) $date->format('m');
+                $hour = (int) $date->format('H');
 
-            // Update the monthly stats
-            $response['monthly_stats'][$year][$month] += 1;
-
-            // Update hourly stats
-            $response['hourly_stats'][(int)$time[0]] = ($response['hourly_stats'][(int)$time[0]] ?? 0) + 1;
-
-            // Process file changes
-            $files = $commit->getFiles();
-            $codeChanges = 0;
-            foreach ($files as $file) {
-                if (Utils::isCodeFile($file->getFilename(), $file->getTotal())) {
-                    $codeChanges += $file->getTotal();
+                // Update monthly stats
+                if (!isset($response['monthly_stats'][$year])) {
+                    $response['monthly_stats'][$year] = array_fill(0, 12, 0);
                 }
+                $response['monthly_stats'][$year][$month - 1]++;
+
+                // Update hourly stats
+                $response['hourly_stats'][$hour]++;
+
+                // Process file changes
+                $codeChanges = 0;
+                foreach ($commit->getFiles() as $file) {
+                    if (Utils::isCodeFile($file->getFilename(), $file->getTotal())) {
+                        $codeChanges += $file->getTotal();
+                    }
+                }
+
+                // Update user stats
+                $author = $commit->getAuthor();
+                if (!isset($response['user_stats'][$author])) {
+                    $response['user_stats'][$author] = ['count' => 0, 'total_changes' => 0, 'code_changes' => 0];
+                }
+                $response['user_stats'][$author]['count']++;
+                $response['user_stats'][$author]['total_changes'] += $commit->getTotal();
+                $response['user_stats'][$author]['code_changes'] += $codeChanges;
+
+                // Update repository stats
+                $repositoryId = $commit->getRepositoryId();
+                if (!isset($response['repository_stats'][$repositoryId])) {
+                    $response['repository_stats'][$repositoryId] = ['total_changes' => 0, 'code_changes' => 0];
+                }
+                $response['repository_stats'][$repositoryId]['total_changes'] += $commit->getTotal();
+                $response['repository_stats'][$repositoryId]['code_changes'] += $codeChanges;
             }
 
-            // Update user stats
-            $response['user_stats'][$commit->getAuthor()] = [
-                'count' => ($response['user_stats'][$commit->getAuthor()]['count'] ?? 0) + 1,
-                'total_changes' => ($response['user_stats'][$commit->getAuthor()]['total_changes'] ?? 0) + $commit->getTotal(),
-                'code_changes' => ($response['user_stats'][$commit->getAuthor()]['code_changes'] ?? 0) + $codeChanges,
-            ];
+            // Sort the results for consistency
+            ksort($response['monthly_stats']);
+            ksort($response['hourly_stats']);
+            ksort($response['repository_stats']);
 
-            // Update repository stats
-            $response['repository_stats'][$commit->getRepositoryId()] = [
-                'total_changes' => ($response['repository_stats'][$commit->getRepositoryId()]['total_changes'] ?? 0) + $commit->getTotal(),
-                'code_changes' => ($response['repository_stats'][$commit->getRepositoryId()]['code_changes'] ?? 0) + $codeChanges,
-            ];
+            return new SuccessResponse('Success', $response, 200);
+        } catch (Exception $e) {
+            throw new ErrorException('Failed to fetch stats', 400, E_USER_WARNING, previous: $e);
         }
-
-        if (isset($response['hourly_stats']))       ksort($response['hourly_stats']);
-        if (isset($response['monthly_stats']))      ksort($response['monthly_stats']);
-        if (isset($response['repository_stats']))   ksort($response['repository_stats']);
-
-        return new SuccessResponse('Success', $response, 200);
     }
 }

@@ -4,19 +4,23 @@ declare(strict_types=1);
 
 namespace MscProject\Services;
 
-use ErrorException;
 use Github\Client;
 use Github\AuthMethod;
 use MscProject\Repositories\GitRepository;
 use MscProject\Repositories\UserRepository;
+use ErrorException;
 
 class GithubService extends GitProviderService
 {
     private Client $client;
     private const SERVICE = 'github';
 
-    public function __construct(GitRepository $gitRepository, GitTokenService $gitTokenService, GitAnalysisService $gitAnalysisService, UserRepository $userRepository)
-    {
+    public function __construct(
+        GitRepository $gitRepository,
+        GitTokenService $gitTokenService,
+        GitAnalysisService $gitAnalysisService,
+        UserRepository $userRepository
+    ) {
         $this->client = new Client();
         parent::__construct($gitTokenService, $gitRepository, $gitAnalysisService, $userRepository, self::SERVICE);
     }
@@ -44,22 +48,19 @@ class GithubService extends GitProviderService
         $page = 1;
 
         do {
-            // Fetch commits from the current page
             $commits = $this->client->repo()->commits()->all($this->username, $repoName, [
                 'sha' => $branch,
                 'page' => $page,
-                'per_page' => 100, // Fetch 100 commits per page (the maximum allowed by most APIs)
+                'per_page' => 100, // Maximum allowed by GitHub API
             ]);
 
-            // Merge the newly fetched commits with the allCommits array
             $allCommits = array_merge($allCommits, $commits);
-
-            // Increment the page number for the next request
             $page++;
-        } while (count($commits) > 0); // Continue fetching as long as we get commits
+        } while (count($commits) > 0);
 
         return $allCommits;
     }
+
     public function fetchCommitDetails(string $sha, string $repoName): array
     {
         return $this->client->repo()->commits()->show($this->username, $repoName, $sha);
@@ -67,14 +68,20 @@ class GithubService extends GitProviderService
 
     public function storeRepository(array $repository, int $gitTokenId, int $hookId): int
     {
-        $repositoryId = $this->gitRepository->storeRepository($gitTokenId, $repository['name'], $repository['html_url'], $repository['description'] ?? '', $repository['owner']['login'], $repository['default_branch'], $hookId);
-        return $repositoryId;
+        return $this->gitRepository->storeRepository(
+            $gitTokenId,
+            $repository['name'],
+            $repository['html_url'],
+            $repository['description'] ?? '',
+            $repository['owner']['login'],
+            $repository['default_branch'],
+            $hookId
+        );
     }
 
     public function storeCommit(array $commit, array $commitDetails, int $repositoryId): int
     {
-        // Store commit with detailed information
-        $commitId = $this->gitRepository->storeCommit(
+        return $this->gitRepository->storeCommit(
             $repositoryId,
             $commit['sha'],
             $commit['author']['login'] ?? $commit['commit']['author']['email'],
@@ -83,13 +90,11 @@ class GithubService extends GitProviderService
             $commitDetails['stats']['additions'],
             $commitDetails['stats']['deletions'],
             $commitDetails['stats']['total'],
-            $commitDetails['files']['stats']['number_of_comment_lines'],
-            $commitDetails['files']['stats']['commit_changes_quality_score'],
-            $commitDetails['files']['stats']['commit_message_quality_score'],
+            $commitDetails['files']['stats']['number_of_comment_lines'] ?? 0,
+            $commitDetails['files']['stats']['commit_changes_quality_score'] ?? 0,
+            $commitDetails['files']['stats']['commit_message_quality_score'] ?? 0,
             $commitDetails['files']['files']
         );
-
-        return $commitId;
     }
 
     public function createWebhook(string $repoName, string $defaultBranch = null): array
@@ -99,15 +104,11 @@ class GithubService extends GitProviderService
             'active' => true,
             'events' => ['push'],
             'config' => [
-                'url' => $_ENV['BASE_URL'] . $_ENV['GITHUB_WEBHOOK_RESPONSE_URL'],
+                'url' => $this->getWebhookUrl(),
                 'content_type' => 'json',
                 'insecure_ssl' => '1',
             ],
         ];
-
-        if ($_ENV['ENV'] == 'dev') {
-            $hookData['config']['url'] = $_ENV['DEV_GITHUB_WEBHOOK_RESPONSE_URL'];
-        }
 
         return $this->client->repo()->hooks()->create($this->username, $repoName, $hookData);
     }
@@ -117,22 +118,21 @@ class GithubService extends GitProviderService
         return $this->client->repo()->hooks()->all($this->username, $repoName);
     }
 
-    public function updateWebhookStatus(string $repoName, int $hookId, bool $status = false, $repositoryId = 0): array
+    public function updateWebhookStatus(string $repoName, int $hookId, bool $status = false, int $repositoryId = 0): array
     {
         $hookData = [
             'active' => $status,
             'config' => [
-                'url' => $_ENV['BASE_URL'] . $_ENV['GITHUB_WEBHOOK_RESPONSE_URL'],
+                'url' => $this->getWebhookUrl(),
             ],
         ];
 
-        if ($_ENV['ENV'] == 'dev') {
-            $hookData['config']['url'] = $_ENV['DEV_GITHUB_WEBHOOK_RESPONSE_URL'];
-        }
-
-        $hookData['config']['url'] = $_ENV['DEV_GITHUB_WEBHOOK_RESPONSE_URL'];
-
         return $this->client->repo()->hooks()->update($this->username, $repoName, $hookId, $hookData);
+    }
+
+    private function getWebhookUrl(): string
+    {
+        return $_ENV['ENV'] === 'dev' ? $_ENV['DEV_GITHUB_WEBHOOK_RESPONSE_URL'] : $_ENV['BASE_URL'] . $_ENV['GITHUB_WEBHOOK_RESPONSE_URL'];
     }
 
     public function handleEvent(string $event, int $hookId, array $data): void
@@ -158,7 +158,6 @@ class GithubService extends GitProviderService
                 break;
             default:
                 throw new ErrorException("Event not supported.", 200);
-                break;
         }
     }
 
@@ -190,7 +189,10 @@ class GithubService extends GitProviderService
         ], $commitDetails['files']);
 
         $commitAnalysis = $this->gitAnalysisService->analyzeCommit($commitDetails['files'], $commitDetails['commit']['message']);
-        $commitDetails['files'] = ["files" => $commitAnalysis['files'], "stats" => array_merge($commitDetails['stats'], $commitAnalysis['stats'])];
+        $commitDetails['files'] = [
+            "files" => $commitAnalysis['files'],
+            "stats" => array_merge($commitDetails['stats'], $commitAnalysis['stats'])
+        ];
 
         $commitDetails['files']["files"] = array_map(fn($row) => [
             'sha' => substr($row['sha'], 0, 7),
@@ -206,7 +208,6 @@ class GithubService extends GitProviderService
 
     public function getCommitSummaries(array $commit, array $commitDetails): string
     {
-        // Format the commit summary string
         return sprintf(
             "Commit (%s): '%s' by '%s' on '%s'\n   Additions: %d, Deletions: %d, Total: %d\n",
             $commit['sha'],

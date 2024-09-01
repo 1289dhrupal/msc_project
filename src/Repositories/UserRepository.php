@@ -8,6 +8,7 @@ use MscProject\Database;
 use MscProject\Models\Alert;
 use MscProject\Models\User;
 use PDO;
+use PDOStatement;
 
 class UserRepository
 {
@@ -18,13 +19,30 @@ class UserRepository
         $this->db = Database::getInstance()->getConnection();
     }
 
-    public function getUserById(int $id): ?User
+    private function prepareAndExecute(string $sql, array $params = []): PDOStatement
     {
-        $stmt = $this->db->prepare("SELECT * FROM users WHERE id = :id");
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value[0], $value[1]);
+        }
         $stmt->execute();
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $stmt;
+    }
 
+    private function fetchSingleResult(string $sql, array $params = []): ?array
+    {
+        $stmt = $this->prepareAndExecute($sql, $params);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    private function fetchAllResults(string $sql, array $params = []): array
+    {
+        $stmt = $this->prepareAndExecute($sql, $params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    private function mapUser(array $result): User
+    {
         return new User(
             (int)$result['id'],
             (string)$result['name'],
@@ -34,121 +52,119 @@ class UserRepository
         );
     }
 
-    public function getUserAlerts(int $userId): ?Alert
+    private function mapAlert(array $result, int $userId): Alert
     {
-        $stmt = $this->db->prepare("SELECT * FROM alerts WHERE user_id = :id");
-        $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
-        $stmt->execute();
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$result) {
-            return new Alert($userId);
-        }
-
         return new Alert(
-            (int)$result['user_id'],
+            $userId,
             (bool)$result['inactivity'],
             (bool)$result['sync'],
             (bool)$result['realtime']
         );
     }
 
-    public function setUserAlerts(Alert $alert)
+    public function getUserById(int $id): ?User
     {
-        $stmt = $this->db->prepare("REPLACE INTO alerts (user_id, inactivity, sync, realtime) VALUES (:user_id, :inactivity, :sync, :realtime)");
+        $sql = "SELECT * FROM users WHERE id = :id";
+        $params = [
+            ':id' => [$id, PDO::PARAM_INT]
+        ];
+        $result = $this->fetchSingleResult($sql, $params);
 
-        $userId = $alert->getUserId();
-        $inactivity = $alert->getInactivity();
-        $sync = $alert->getSync();
-        $realtime = $alert->getRealtime();
+        return $result ? $this->mapUser($result) : null;
+    }
 
-        $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
-        $stmt->bindParam(':inactivity', $inactivity, PDO::PARAM_BOOL);
-        $stmt->bindParam(':sync', $sync, PDO::PARAM_BOOL);
-        $stmt->bindParam(':realtime', $realtime, PDO::PARAM_BOOL);
-        return $stmt->execute();
+    public function getUserAlerts(int $userId): ?Alert
+    {
+        $sql = "SELECT * FROM alerts WHERE user_id = :id";
+        $params = [
+            ':id' => [$userId, PDO::PARAM_INT]
+        ];
+        $result = $this->fetchSingleResult($sql, $params);
+
+        return $result ? $this->mapAlert($result, $userId) : new Alert($userId);
+    }
+
+    public function setUserAlerts(Alert $alert): bool
+    {
+        $sql = "REPLACE INTO alerts (user_id, inactivity, sync, realtime) VALUES (:user_id, :inactivity, :sync, :realtime)";
+        $params = [
+            ':user_id' => [$alert->getUserId(), PDO::PARAM_INT],
+            ':inactivity' => [$alert->getInactivity(), PDO::PARAM_BOOL],
+            ':sync' => [$alert->getSync(), PDO::PARAM_BOOL],
+            ':realtime' => [$alert->getRealtime(), PDO::PARAM_BOOL]
+        ];
+        return $this->prepareAndExecute($sql, $params)->rowCount() > 0;
     }
 
     public function getUserByEmail(string $email): ?User
     {
-        $stmt = $this->db->prepare("SELECT * FROM users WHERE email = :email");
-        $stmt->bindParam(':email', $email, PDO::PARAM_STR);
-        $stmt->execute();
+        $sql = "SELECT * FROM users WHERE email = :email";
+        $params = [
+            ':email' => [$email, PDO::PARAM_STR]
+        ];
+        $result = $this->fetchSingleResult($sql, $params);
 
-        if ($stmt->rowCount() === 0) {
-            return null;
-        }
-
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        return new User(
-            (int)$result['id'],
-            (string)$result['name'],
-            (string)$result['email'],
-            (string)$result['password'],
-            (string)$result['status']
-        );
+        return $result ? $this->mapUser($result) : null;
     }
 
     public function createUser(User $user): int
     {
-        $name = $user->getName();
-        $email = $user->getEmail();
-        $password = $user->getPassword();
-        $status = $user->getStatus();
+        $sql = "INSERT INTO users (name, email, password, status) VALUES (:name, :email, :password, :status)";
+        $params = [
+            ':name' => [$user->getName(), PDO::PARAM_STR],
+            ':email' => [$user->getEmail(), PDO::PARAM_STR],
+            ':password' => [$user->getPassword(), PDO::PARAM_STR],
+            ':status' => [$user->getStatus(), PDO::PARAM_STR]
+        ];
+        $this->prepareAndExecute($sql, $params);
 
-        $stmt = $this->db->prepare("INSERT INTO users (name, email, password, status) VALUES (:name, :email, :password, :status)");
-        $stmt->bindParam(':name', $name, PDO::PARAM_STR);
-        $stmt->bindParam(':email', $email, PDO::PARAM_STR);
-        $stmt->bindParam(':password', $password, PDO::PARAM_STR);
-        $stmt->bindParam(':status', $status, PDO::PARAM_STR);
-        $stmt->execute();
-
-        return intval($this->db->lastInsertId());
+        return (int)$this->db->lastInsertId();
     }
 
     public function updateUserStatus(int $id, string $status): bool
     {
-        $stmt = $this->db->prepare("UPDATE users SET status = :status WHERE id = :id");
-        $stmt->bindParam(':status', $status, PDO::PARAM_STR);
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-        return $stmt->execute();
+        $sql = "UPDATE users SET status = :status WHERE id = :id";
+        $params = [
+            ':status' => [$status, PDO::PARAM_STR],
+            ':id' => [$id, PDO::PARAM_INT]
+        ];
+        return $this->prepareAndExecute($sql, $params)->rowCount() > 0;
     }
 
     public function updateUser(User $user): bool
     {
-        $id = $user->getId();
-        $name = $user->getName();
-        $password = $user->getPassword();
-
         $sql = "UPDATE users SET name = :name";
-        if ($password) {
-            $sql .= ", password = :password";
-        }
-        $sql .= " WHERE id = :id";
+        $params = [
+            ':name' => [$user->getName(), PDO::PARAM_STR],
+            ':id' => [$user->getId(), PDO::PARAM_INT]
+        ];
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindParam(':name', $name, PDO::PARAM_STR);
-        $stmt->bindParam(':password', $password, PDO::PARAM_STR);
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-        return $stmt->execute();
+        if ($user->getPassword()) {
+            $sql .= ", password = :password";
+            $params[':password'] = [$user->getPassword(), PDO::PARAM_STR];
+        }
+
+        $sql .= " WHERE id = :id";
+        return $this->prepareAndExecute($sql, $params)->rowCount() > 0;
     }
 
     public function updateUserLastAccessed(int $id): bool
     {
-        $stmt = $this->db->prepare("UPDATE users SET last_accessed = CURRENT_TIMESTAMP WHERE id = :id");
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-        return $stmt->execute();
+        $sql = "UPDATE users SET last_accessed = CURRENT_TIMESTAMP WHERE id = :id";
+        $params = [
+            ':id' => [$id, PDO::PARAM_INT]
+        ];
+        return $this->prepareAndExecute($sql, $params)->rowCount() > 0;
     }
 
     public function fetchAlertsToNotify(int $userId = 0): array
     {
-        $stmt = $this->db->query("
+        $sql = "
             SELECT u.id, u.email, a.inactivity, a.sync, a.realtime
             FROM users u
-                JOIN alerts a ON u.id = a.user_id
+            JOIN alerts a ON u.id = a.user_id
             WHERE u.status = 'active'
-        ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        ";
+        return $this->fetchAllResults($sql);
     }
 }

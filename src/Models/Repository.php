@@ -44,6 +44,7 @@ class Repository
         $this->lastFetchedAt = $lastFetchedAt;
     }
 
+    // Getters
     public function getId(): int
     {
         return $this->id;
@@ -97,5 +98,79 @@ class Repository
     public function getLastFetchedAt(): ?string
     {
         return $this->lastFetchedAt;
+    }
+
+    // Setters
+    public function setId(int $id): void
+    {
+        $this->id = $id;
+    }
+
+    public function setGitTokenId(int $gitTokenId): void
+    {
+        $this->gitTokenId = $gitTokenId;
+    }
+
+    public function setName(string $name): void
+    {
+        $this->name = $name;
+    }
+
+    public function setUrl(string $url): void
+    {
+        $this->url = $url;
+    }
+
+    public function setDescription(?string $description): void
+    {
+        $this->description = $description;
+    }
+
+    public function setOwner(string $owner): void
+    {
+        $this->owner = $owner;
+    }
+
+    public function setDefaultBranch(string $defaultBranch): void
+    {
+        $this->defaultBranch = $defaultBranch;
+    }
+
+    public function setHookId(int $hookId): void
+    {
+        $this->hookId = $hookId;
+    }
+
+    public function setIsActive(bool $isActive): void
+    {
+        $this->isActive = $isActive;
+    }
+
+    public function setCreatedAt(string $createdAt): void
+    {
+        $this->createdAt = $createdAt;
+    }
+
+    public function setLastFetchedAt(?string $lastFetchedAt): void
+    {
+        $this->lastFetchedAt = $lastFetchedAt;
+    }
+
+    // ToString method that returns JSON
+    public function __toString(): string
+    {
+        return json_encode([
+            'id' => $this->id,
+            'git_token_id' => $this->gitTokenId,
+            'name' => $this->name,
+            'url' => $this->url,
+            'description' => $this->description,
+            'owner' => $this->owner,
+            'default_branch' => $this->defaultBranch,
+            'hook_id' => $this->hookId,
+            'is_active' => $this->isActive,
+            'created_at' => $this->createdAt,
+            'last_fetched_at' => $this->lastFetchedAt
+        ]);
     }
 }

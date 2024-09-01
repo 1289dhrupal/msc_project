@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace MscProject\Services;
 
-use Exception;
 use MscProject\Mailer;
 use MscProject\Models\GitToken;
 use MscProject\Models\Repository;
@@ -12,6 +11,8 @@ use MscProject\Repositories\GitRepository;
 use MscProject\Repositories\UserRepository;
 use MscProject\Services\GitTokenService;
 use MscProject\Utils;
+use Exception;
+use ErrorException;
 
 abstract class GitProviderService
 {
@@ -22,8 +23,13 @@ abstract class GitProviderService
     protected GitAnalysisService $gitAnalysisService;
     protected UserRepository $userRepository;
 
-    public function __construct(GitTokenService $gitTokenService, GitRepository $gitRepository, GitAnalysisService $gitAnalysisService, UserRepository $userRepository, string $service)
-    {
+    public function __construct(
+        GitTokenService $gitTokenService,
+        GitRepository $gitRepository,
+        GitAnalysisService $gitAnalysisService,
+        UserRepository $userRepository,
+        string $service
+    ) {
         $this->gitRepository = $gitRepository;
         $this->gitTokenService = $gitTokenService;
         $this->gitAnalysisService = $gitAnalysisService;
@@ -121,113 +127,127 @@ abstract class GitProviderService
         $this->gitTokenService->updateFetchedAt($gitTokenId);
     }
 
-    public function syncAll()
+    public function syncAll(): void
     {
         $gitTokens = $this->fetchGitTokens();
 
         foreach ($gitTokens as $gitToken) {
-
-            $repositorySummaries = [];
             if (!$gitToken['is_active']) {
                 continue;
             }
 
-            $this->authenticate($gitToken['token'], $gitToken['url']);
+            try {
+                $this->authenticate($gitToken['token'], $gitToken['url']);
+                $repositories = $this->fetchRepositories();
 
-            $repositories = $this->fetchRepositories();
+                $repositorySummaries = [];
+                foreach ($repositories as $repository) {
+                    $repoOwner = $this->getRepositoryOwner($repository);
+                    $repoPath = $this->getRepositoryPath($repository);
 
-            foreach ($repositories as $repository) {
-                $repoOwner = $this->getRepositoryOwner($repository);
-                $repoPath = $this->getRepositoryPath($repository);
-                $repoName = $repository['name'];
+                    $repo = $this->getRepository($gitToken['id'], $repoOwner, $repository['name']);
 
-                $repo = $this->getRepository($gitToken['id'], $repoOwner, $repository['name']);
-
-                if ($repo && !$repo['is_active']) {
-                    continue;
-                }
-
-                $repositoryId = $repo['id'] ?? 0;
-
-                if (!$repositoryId) {
-                    $hookId = 0;
-
-                    $hooks = $this->listWebhooks($repoPath);
-                    foreach ($hooks as $hook) {
-                        if ($hook['name'] === 'web') {
-                            $hookId = $hook['id'];
-                            break;
-                        }
+                    if ($repo && !$repo['is_active']) {
+                        continue;
                     }
 
-                    if (!$hookId) {
-                        $hook = $this->createWebhook($repoPath, $repository['default_branch']);
-                        $hookId = $hook['id'];
+                    $repositoryId = $repo['id'] ?? 0;
+
+                    if (!$repositoryId) {
+                        $hookId = $this->manageWebhooks($repository, $repoPath, $gitToken['id']);
+                        $repositoryId = $this->storeRepository($repository, $gitToken['id'], $hookId);
+                        $this->updateWebhookStatus($repoPath, $hookId, true, $repositoryId);
                     }
 
-                    $repositoryId = $this->storeRepository($repository, $gitToken['id'], $hookId);
-                    $this->updateWebhookStatus($repoPath, $hookId, true, $repositoryId);
+                    $commitCount = $this->syncCommits($repositoryId, $repoPath, $repository['default_branch']);
+                    $this->updateRepositoryFetchedAt($repositoryId);
+                    $repositorySummaries[] = [
+                        'owner' => $repoOwner,
+                        'path' => $repoPath,
+                        'name' => $repository['name'],
+                        'commit_count' => $commitCount
+                    ];
                 }
 
-                $commitCount = 0;
-                $commits = $this->fetchCommits($repoPath, $repository['default_branch']);
-                foreach ($commits as $commit) {
-                    $commitIdentifier = $this->getCommitIdentifier($commit);
-                    if (!$this->getCommit($repositoryId, $commitIdentifier)) {
-                        $commitDetails = $this->fetchCommitDetails($commitIdentifier, $repoPath);
-                        $commitDetails = $this->processCommit($commit, $commitDetails);
-                        $this->storeCommit($commit, $commitDetails, $repositoryId);
-                        $commitCount += 1;
-                    }
-                }
+                $this->updateTokenFetchedAt($gitToken['id']);
+                $summary = [
+                    'user_id' => $gitToken['user_id'],
+                    'git_token' => Utils::maskToken($gitToken['token']),
+                    'url' => $gitToken['url'],
+                    'repositories' => $repositorySummaries
+                ];
 
-                $this->updateRepositoryFetchedAt($repositoryId);
-                $repositorySummaries[] = ['owner' => $repoOwner, 'path' => $repoPath, 'name' => $repository['name'], 'commit_count' => $commitCount];
+                $this->sendSyncAlertEmail($gitToken, $summary);
+            } catch (Exception $e) {
+                throw new ErrorException("Failed to sync repositories for token {$gitToken['id']}: " . $e->getMessage());
             }
-
-            $this->updateTokenFetchedAt($gitToken['id']);
-
-            $summary = ['user_id' => $gitToken['user_id'], 'git_token' => Utils::maskToken($gitToken['token']), 'url' => $gitToken['url'], 'repositories' => $repositorySummaries];
-
-            $this->sendSyncAlertEmail($gitToken, $summary);
         }
     }
 
-    public function handlePushEvent(Repository $repository, GitToken $gitToken, string $repoPath): void
+    private function manageWebhooks(array $repository, string $repoPath, int $gitTokenId): int
     {
-        $gitTokenId = $gitToken->getId();
-        $repositoryId = $repository->getId();
-        $defaultBranch = $repository->getDefaultBranch();
+        $hooks = $this->listWebhooks($repoPath);
+        foreach ($hooks as $hook) {
+            if ($hook['name'] === 'web') {
+                return $hook['id'];
+            }
+        }
 
-        $this->authenticate($gitToken->getToken(), $gitToken->getUrl());
+        $hook = $this->createWebhook($repoPath, $repository['default_branch']);
+        return $hook['id'];
+    }
 
+    private function syncCommits(int $repositoryId, string $repoPath, string $defaultBranch): int
+    {
+        $commitCount = 0;
         $commits = $this->fetchCommits($repoPath, $defaultBranch);
-        $commitSummaries = [];
+
         foreach ($commits as $commit) {
             $commitIdentifier = $this->getCommitIdentifier($commit);
             if (!$this->getCommit($repositoryId, $commitIdentifier)) {
                 $commitDetails = $this->fetchCommitDetails($commitIdentifier, $repoPath);
                 $commitDetails = $this->processCommit($commit, $commitDetails);
                 $this->storeCommit($commit, $commitDetails, $repositoryId);
-                $commitSummaries[] = $this->getCommitSummaries($commit, $commitDetails);
+                $commitCount++;
             }
         }
 
-        $this->updateRepositoryFetchedAt($repositoryId);
+        return $commitCount;
+    }
 
-        $this->updateTokenFetchedAt($gitTokenId);
+    public function handlePushEvent(Repository $repository, GitToken $gitToken, string $repoPath): void
+    {
+        try {
+            $this->authenticate($gitToken->getToken(), $gitToken->getUrl());
 
-        $this->sendActivityAlertEmail($repository, $gitToken, $commitSummaries);
+            $commits = $this->fetchCommits($repoPath, $repository->getDefaultBranch());
+            $commitSummaries = [];
+
+            foreach ($commits as $commit) {
+                $commitIdentifier = $this->getCommitIdentifier($commit);
+                if (!$this->getCommit($repository->getId(), $commitIdentifier)) {
+                    $commitDetails = $this->fetchCommitDetails($commitIdentifier, $repoPath);
+                    $commitDetails = $this->processCommit($commit, $commitDetails);
+                    $this->storeCommit($commit, $commitDetails, $repository->getId());
+                    $commitSummaries[] = $this->getCommitSummaries($commit, $commitDetails);
+                }
+            }
+
+            $this->updateRepositoryFetchedAt($repository->getId());
+            $this->updateTokenFetchedAt($gitToken->getId());
+            $this->sendActivityAlertEmail($repository, $gitToken, $commitSummaries);
+        } catch (Exception $e) {
+            throw new ErrorException("Failed to handle push event for repository {$repository->getId()}: " . $e->getMessage());
+        }
     }
 
     private function sendActivityAlertEmail(Repository $repository, GitToken $gitToken, array $commitSummaries): void
     {
-        if (!$commitSummaries) {
+        if (empty($commitSummaries)) {
             return;
         }
 
         $alerts = $this->userRepository->getUserAlerts($gitToken->getUserId());
-        print_r($alerts);
         if (!$alerts || !$alerts->getRealtime()) {
             return;
         }
@@ -241,18 +261,16 @@ abstract class GitProviderService
             file_get_contents($templatePath)
         );
 
-        // Extract the subject and body using more streamlined methods
         list($subject, $body) = $this->extractSubjectAndBody($template);
         $user = $this->userRepository->getUserById($gitToken->getUserId());
 
-        // Send the email
         $mailer = Mailer::getInstance();
-        $mailer->sendEmail($user->getEmail(), $subject, nl2br($body)); // Convert newlines to <br> in the body
+        $mailer->sendEmail($user->getEmail(), $subject, nl2br($body));
     }
 
     private function sendSyncAlertEmail(array $gitToken, array $summary): void
     {
-        if (!$summary || !$summary['repositories'] || array_sum(array_column($summary['repositories'], 'commit_count')) === 0) {
+        if (empty($summary['repositories']) || array_sum(array_column($summary['repositories'], 'commit_count')) === 0) {
             return;
         }
 
@@ -261,14 +279,13 @@ abstract class GitProviderService
             return;
         }
 
-
-        // Initialize the repository summaries
         $repositorySummaries = '';
         $repositorySummaries .= sprintf(
             "Git Token: %s<br>URL: %s<br><br>Repositories:<br>",
             $summary['git_token'],
             $summary['url']
         );
+
         foreach ($summary['repositories'] as $repo) {
             $repositorySummaries .= sprintf(
                 "<li>Repository: %s, Commit Count: %d<li>",
@@ -276,8 +293,8 @@ abstract class GitProviderService
                 (int)$repo['commit_count']
             );
         }
-        $repositorySummaries .= "-----------------------------<br>";
 
+        $repositorySummaries .= "-----------------------------<br>";
 
         $templatePath = __DIR__ . '/../Templates/token_sync.txt';
         $template = str_replace(
@@ -286,24 +303,18 @@ abstract class GitProviderService
             file_get_contents($templatePath)
         );
 
-        // Extract the subject and body using a helper method
         list($subject, $body) = $this->extractSubjectAndBody($template);
-
-        // Assuming there is a valid user_id in $gitTokens
-        $user = $this->userRepository->getUserById($summary['user_id']); // Get user using the first token's user_id
+        $user = $this->userRepository->getUserById($summary['user_id']);
 
         $mailer = Mailer::getInstance();
-        $mailer->sendEmail($user->getEmail(), $subject, nl2br($body)); // Convert newlines to <br> in the body
+        $mailer->sendEmail($user->getEmail(), $subject, nl2br($body));
     }
-
 
     private function extractSubjectAndBody(string $template): array
     {
-        // Extract the subject
         preg_match('/^Subject:\s*(.+)$/m', $template, $subjectMatches);
         $subject = trim($subjectMatches[1]);
 
-        // Extract the body content after the "Body:" line
         $body = trim(preg_replace('/^Subject:.*?^Body:\s*/ms', '', $template));
 
         return [$subject, $body];
