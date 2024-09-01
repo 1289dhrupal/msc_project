@@ -83,7 +83,10 @@ class GithubService extends GitProviderService
             $commitDetails['stats']['additions'],
             $commitDetails['stats']['deletions'],
             $commitDetails['stats']['total'],
-            json_encode($commitDetails['files'])
+            $commitDetails['files']['stats']['number_of_comment_lines'],
+            $commitDetails['files']['stats']['commit_changes_quality_score'],
+            $commitDetails['files']['stats']['commit_message_quality_score'],
+            $commitDetails['files']['files']
         );
 
         return $commitId;

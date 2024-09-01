@@ -50,11 +50,11 @@ class DashboardController
             $response['hourly_stats'][(int)$time[0]] = ($response['hourly_stats'][(int)$time[0]] ?? 0) + 1;
 
             // Process file changes
-            $files = json_decode($commit->getFiles(), true)['files'];
+            $files = $commit->getFiles();
             $codeChanges = 0;
             foreach ($files as $file) {
-                if (Utils::isCodeFile($file['filename'], $file['changes'])) {
-                    $codeChanges += $file['changes'];
+                if (Utils::isCodeFile($file->getFilename(), $file->getTotal())) {
+                    $codeChanges += $file->getTotal();
                 }
             }
 

@@ -97,12 +97,16 @@ class Utils
         ];
 
         // Extract the file extension
-        $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        $extension = self::getFileExtension($fileName);
 
         // Check if the extension is in the list of code file extensions
         return !Utils::shouldSkipFile($fileName, $fileChanges) && in_array($extension, $codeExtensions);
     }
 
+    public static function getFileExtension(string $fileName): string
+    {
+        return strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+    }
 
     private static function shouldSkipFile(string $filePath, int $fileChanges): bool
     {

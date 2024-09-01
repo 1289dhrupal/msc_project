@@ -6,6 +6,8 @@ use MscProject\Database;
 use MscProject\Models\GitToken;
 use MscProject\Models\Repository;
 use MscProject\Models\Commit;
+use MscProject\Models\CommitFile;
+use MscProject\Utils;
 use PDO;
 
 class GitRepository
@@ -69,9 +71,29 @@ class GitRepository
         int $additions,
         int $deletions,
         int $total,
-        string $files
+        int $numberOfCommentLines,
+        int $commitChangesQualityScore,
+        int $commitMessageQualityScore,
+        /**
+         * @var CommitFile[]
+         */
+        array $files
     ): int {
-        $stmt = $this->db->prepare("INSERT INTO commits (repository_id, sha, author, message, date, additions, deletions, total, files) VALUES (:repository_id, :sha, :author, :message, :date, :additions, :deletions, :total, :files)");
+        $f = [];
+        foreach ($files as $file) {
+            $f[] = [
+                'sha' => $file->getSha(),
+                'status' => $file->getStatus(),
+                'additions' => $file->getAdditions(),
+                'deletions' => $file->getDeletions(),
+                'total' => $file->getTotal(),
+                'filename' => $file->getFilename(),
+                'extension' => $file->getExtension(),
+            ];
+        }
+        $files = json_encode($f);
+
+        $stmt = $this->db->prepare("INSERT INTO commits (repository_id, sha, author, message, date, additions, deletions, total, files, number_of_comment_lines, commit_changes_quality_score, commit_message_quality_score) VALUES (:repository_id, :sha, :author, :message, :date, :additions, :deletions, :total, :files, :number_of_comment_lines, :commit_changes_quality_score, :commit_message_quality_score)");
         $stmt->bindParam(':repository_id', $repositoryId, PDO::PARAM_INT);
         $stmt->bindParam(':sha', $sha, PDO::PARAM_STR);
         $stmt->bindParam(':author', $author, PDO::PARAM_STR);
@@ -81,6 +103,9 @@ class GitRepository
         $stmt->bindParam(':deletions', $deletions, PDO::PARAM_INT);
         $stmt->bindParam(':total', $total, PDO::PARAM_INT);
         $stmt->bindParam(':files', $files, PDO::PARAM_STR);
+        $stmt->bindParam(':number_of_comment_lines', $numberOfCommentLines, PDO::PARAM_INT);
+        $stmt->bindParam(':commit_changes_quality_score', $commitChangesQualityScore, PDO::PARAM_INT);
+        $stmt->bindParam(':commit_message_quality_score', $commitMessageQualityScore, PDO::PARAM_INT);
         $stmt->execute();
 
         return (int)$this->db->lastInsertId();
@@ -95,6 +120,21 @@ class GitRepository
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($result) {
+            $f = json_decode($result['files'], true);
+            $files = [];
+            foreach ($f as $file) {
+                $files[] = new CommitFile(
+                    (int) $result['id'],
+                    $file['sha'],
+                    $file['status'],
+                    (int) $file['additions'],
+                    (int) $file['deletions'],
+                    (int) ($file['total'] ?? $file['changes'] ?? ($file['additions'] + $file['deletions'])),
+                    $file['filename'],
+                    $file['extension'] ?? Utils::getFileExtension($file['filename'])
+                );
+            }
+
             return new Commit(
                 (int) $result['id'],
                 (int) $result['repository_id'],
@@ -105,7 +145,10 @@ class GitRepository
                 (int) $result['additions'],
                 (int) $result['deletions'],
                 (int) $result['total'],
-                $result['files']
+                (int) $result['number_of_comment_lines'],
+                (int) $result['commit_changes_quality_score'],
+                (int) $result['commit_message_quality_score'],
+                $files
             );
         }
 
@@ -120,6 +163,21 @@ class GitRepository
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($result) {
+            $f = json_decode($result['files'], true);
+            $files = [];
+            foreach ($f as $file) {
+                $files[] = new CommitFile(
+                    (int) $result['id'],
+                    $file['sha'],
+                    $file['status'],
+                    (int) $file['additions'],
+                    (int) $file['deletions'],
+                    (int) ($file['total'] ?? $file['changes'] ?? ($file['additions'] + $file['deletions'])),
+                    $file['filename'],
+                    $file['extension'] ?? Utils::getFileExtension($file['filename'])
+                );
+            }
+
             return new Commit(
                 (int) $result['id'],
                 (int) $result['repository_id'],
@@ -130,7 +188,10 @@ class GitRepository
                 (int) $result['additions'],
                 (int) $result['deletions'],
                 (int) $result['total'],
-                $result['files']
+                (int) $result['number_of_comment_lines'],
+                (int) $result['commit_changes_quality_score'],
+                (int) $result['commit_message_quality_score'],
+                $files
             );
         }
 
@@ -453,8 +514,26 @@ class GitRepository
         $stmt->execute();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+
+
         $commits = [];
         foreach ($results as $result) {
+            $f = json_decode($result['files'], true);
+            $files = [];
+            foreach ($f as $file) {
+                $files[] = new CommitFile(
+                    (int) $result['id'],
+                    $file['sha'],
+                    $file['status'],
+                    (int) $file['additions'],
+                    (int) $file['deletions'],
+                    (int) ($file['total'] ?? $file['changes'] ?? ($file['additions'] + $file['deletions'])),
+                    $file['filename'],
+                    $file['extension'] ?? Utils::getFileExtension($file['filename'])
+                );
+            }
+
+
             $commits[] = new Commit(
                 (int) $result['id'],
                 (int) $result['repository_id'],
@@ -465,7 +544,10 @@ class GitRepository
                 (int) $result['additions'],
                 (int) $result['deletions'],
                 (int) $result['total'],
-                $result['files']
+                (int) $result['number_of_comment_lines'],
+                (int) $result['commit_changes_quality_score'],
+                (int) $result['commit_message_quality_score'],
+                $files
             );
         }
 
@@ -497,7 +579,10 @@ class GitRepository
     //     return $commitAnalysis;
     // }
 
-    public function getCommitAnalysisById(int $commitId = 0, int $userId = 0): string
+    /**
+     * @return CommitFile[]
+     */
+    public function getCommitAnalysisById(int $commitId = 0, int $userId = 0): array
     {
         $sql = "SELECT * FROM commit_analysis WHERE commit_id = :commit_id";
         if ($userId != 0) {
@@ -511,7 +596,24 @@ class GitRepository
         $stmt->execute();
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $result['files'];
+        $files = [];
+        if ($result) {
+            $f = json_decode($result['files'], true);
+            foreach ($f as $file) {
+                $files[] = new CommitFile(
+                    (int) $result['id'],
+                    $file['sha'],
+                    $file['status'],
+                    (int) $file['additions'],
+                    (int) $file['deletions'],
+                    (int) ($file['total'] ?? $file['changes'] ?? ($file['additions'] + $file['deletions'])),
+                    $file['filename'],
+                    $file['extension'] ?? Utils::getFileExtension($file['filename'])
+                );
+            }
+        }
+
+        return $files;
     }
 
     public function getRepositoryByHookId(int $hookId): ?Repository

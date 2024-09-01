@@ -107,7 +107,7 @@ abstract class GitProviderService
             'additions' => $commit->getAdditions(),
             'deletions' => $commit->getDeletions(),
             'total' => $commit->getTotal(),
-            'files' => json_decode($commit->getFiles(), true)
+            'files' => $commit->getFiles()
         ];
     }
 
@@ -176,7 +176,7 @@ abstract class GitProviderService
                     if (!$this->getCommit($repositoryId, $commitIdentifier)) {
                         $commitDetails = $this->fetchCommitDetails($commitIdentifier, $repoPath);
                         $commitDetails = $this->processCommit($commit, $commitDetails);
-                        // $this->storeCommit($commit, $commitDetails, $repositoryId);
+                        $this->storeCommit($commit, $commitDetails, $repositoryId);
                         $commitCount += 1;
                     }
                 }

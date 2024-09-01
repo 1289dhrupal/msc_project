@@ -27,6 +27,6 @@ $githubService = Orchestrator::getInstance()->get(GithubService::class);
 $gitlabService = Orchestrator::getInstance()->get(GitLabService::class);
 
 $stats[] = [
-    // 'github' => $githubService->syncAll(),
+    'github' => $githubService->syncAll(),
     'gitlab' => $gitlabService->syncAll(),
 ];
