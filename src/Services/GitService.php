@@ -126,7 +126,7 @@ class GitService
         return ["commits" => $commitResponse, "repositories" => $repoResponse];
     }
 
-    public function getStats(int $repoId = 0, int $userId = 0): array
+    public function getStats(int $repoId, int $userId = 0): array
     {
         $repo = $this->gitRepository->getRepositoryById($repoId, $userId);
         if ($repo === null) {
@@ -138,7 +138,8 @@ class GitService
         $response = [
             'churn_rates' => [],
             'contribution' => [],
-            'weekly_stats' => array_fill(0, 52, []),
+            'weekly_stats' => array_fill(0, 53, []),
+            'extension_stats' => [],
         ];
 
         $totalLines = 0;
@@ -161,6 +162,7 @@ class GitService
                 'additions' => $additions,
                 'deletions' => -$deletions,
                 'total' => $totalLines,
+                'score' => ($commit->getCommitChangesQualityScore() * 0.90) + ($commit->getCommitMessageQualityScore() * 0.10),
             ];
 
             $author = $commit->getAuthor();
@@ -185,6 +187,30 @@ class GitService
             $week = (int) $date->format('W');
 
             $response['weekly_stats'][$week][$author] = ($response['weekly_stats'][$week][$author] ?? 0) + 1;
+
+            foreach ($commit->getFiles() as $file) {
+                $extension = $file->getExtension() ?: 'unknown';
+                if (!isset($response['extension_stats'][$extension])) {
+                    $response['extension_stats'][$extension] = [];
+                }
+
+                if (!isset($response['extension_stats'][$extension][$author])) {
+                    $response['extension_stats'][$extension][$author] = [
+                        'lines' => 0,
+                        'files' => [],
+                    ];
+                }
+
+                $response['extension_stats'][$extension][$author]['lines'] += $file->getAdditions() - $file->getDeletions();
+                $response['extension_stats'][$extension][$author]['files'][] = $file->getFilename();
+                $response['extension_stats'][$extension][$author]['files'] = array_unique($response['extension_stats'][$extension][$author]['files']);
+            }
+        }
+
+        foreach ($response['extension_stats'] as $extension => $stats) {
+            foreach ($stats as $author => $stat) {
+                $response['extension_stats'][$extension][$author]['files'] = count($stat['files']);
+            }
         }
 
         return $response;

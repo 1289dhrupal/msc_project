@@ -390,6 +390,7 @@ class GitRepository
             $params[':user_id'] = [$userId, PDO::PARAM_INT];
         }
 
+        $sql .= " ORDER BY r.id ASC";
         $results = $this->fetchAllResults($sql, $params);
         return array_map(fn($result) => $this->mapRepository($result), $results);
     }
