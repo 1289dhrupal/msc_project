@@ -6,7 +6,7 @@ namespace MscProject\Controllers;
 
 use MscProject\Models\Response\Response;
 use MscProject\Models\Response\SuccessResponse;
-use MscProject\Repositories\GitRepository;
+use MscProject\Services\GitService;
 use MscProject\Utils;
 use DateTime;
 use Exception;
@@ -14,11 +14,11 @@ use ErrorException;
 
 class DashboardController
 {
-    private GitRepository $gitRepository;
+    private GitService $gitService;
 
-    public function __construct(GitRepository $gitRepository)
+    public function __construct(GitService $gitService)
     {
-        $this->gitRepository = $gitRepository;
+        $this->gitService = $gitService;
     }
 
     public function overallStats(): Response
@@ -28,7 +28,8 @@ class DashboardController
             global $userSession;
             $repoID = intval($_GET['repository_id'] ?? 0);
 
-            $commits = $this->gitRepository->listCommits($repoID, $userSession->getId());
+            $response = $this->gitService->listCommits($repoID, $userSession->getId(), true, 0);
+            $commits = $response['commits'];
 
             // Initialize response structure
             $response = [
@@ -40,7 +41,7 @@ class DashboardController
 
             foreach ($commits as $commit) {
                 // Extract date and time components
-                $date = new DateTime($commit->getDate());
+                $date = new DateTime($commit['date']);
                 $year = (int) $date->format('Y');
                 $month = (int) $date->format('m');
                 $hour = (int) $date->format('H');
@@ -56,27 +57,27 @@ class DashboardController
 
                 // Process file changes
                 $codeChanges = 0;
-                foreach ($commit->getFiles() as $file) {
-                    if (Utils::isCodeFile($file->getFilename(), $file->getTotal())) {
-                        $codeChanges += $file->getTotal();
+                foreach ($commit['files'] as $file) {
+                    if (Utils::isCodeFile($file['filename'], $file['total'])) {
+                        $codeChanges += $file['total'];
                     }
                 }
 
                 // Update user stats
-                $author = $commit->getAuthor();
+                $author = $commit['author'];
                 if (!isset($response['user_stats'][$author])) {
                     $response['user_stats'][$author] = ['count' => 0, 'total_changes' => 0, 'code_changes' => 0];
                 }
                 $response['user_stats'][$author]['count']++;
-                $response['user_stats'][$author]['total_changes'] += $commit->getTotal();
+                $response['user_stats'][$author]['total_changes'] += $commit['total'];
                 $response['user_stats'][$author]['code_changes'] += $codeChanges;
 
                 // Update repository stats
-                $repositoryId = $commit->getRepositoryId();
+                $repositoryId = $commit['repository_id'];
                 if (!isset($response['repository_stats'][$repositoryId])) {
                     $response['repository_stats'][$repositoryId] = ['total_changes' => 0, 'code_changes' => 0];
                 }
-                $response['repository_stats'][$repositoryId]['total_changes'] += $commit->getTotal();
+                $response['repository_stats'][$repositoryId]['total_changes'] += $commit['total'];
                 $response['repository_stats'][$repositoryId]['code_changes'] += $codeChanges;
             }
 

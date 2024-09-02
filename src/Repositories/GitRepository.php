@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace MscProject\Repositories;
 
 use MscProject\Database;
@@ -74,26 +76,23 @@ class GitRepository
             (int) $result['number_of_comment_lines'],
             (int) $result['commit_changes_quality_score'],
             (int) $result['commit_message_quality_score'],
-            $files
+            $this->mapCommitFiles($files, (int) $result['id'])
         );
     }
 
+    /** @return CommitFile[] $files */
     private function mapCommitFiles(array $fileData, int $commitId): array
     {
-        $files = [];
-        foreach ($fileData as $file) {
-            $files[] = new CommitFile(
-                $commitId,
-                $file['sha'],
-                $file['status'],
-                (int) $file['additions'],
-                (int) $file['deletions'],
-                (int) ($file['total'] ?? $file['changes'] ?? ($file['additions'] + $file['deletions'])),
-                $file['filename'],
-                $file['extension'] ?? Utils::getFileExtension($file['filename'])
-            );
-        }
-        return $files;
+        return array_map(fn($file) => new CommitFile(
+            $commitId,
+            $file['sha'],
+            $file['status'],
+            (int) $file['additions'],
+            (int) $file['deletions'],
+            (int) ($file['total'] ?? $file['changes'] ?? ($file['additions'] + $file['deletions'])),
+            $file['filename'],
+            $file['extension'] ?? Utils::getFileExtension($file['filename'])
+        ), $fileData);
     }
 
     public function storeRepository(int $gitTokenId, string $name, string $url, ?string $description, string $owner, string $defaultBranch, int $hookId): int
@@ -139,20 +138,21 @@ class GitRepository
         int $commitMessageQualityScore,
         array $files
     ): int {
-        $filesJson = json_encode(array_map(function (CommitFile $file) {
-            return [
-                'sha' => $file->getSha(),
-                'status' => $file->getStatus(),
-                'additions' => $file->getAdditions(),
-                'deletions' => $file->getDeletions(),
-                'total' => $file->getTotal(),
-                'filename' => $file->getFilename(),
-                'extension' => $file->getExtension(),
-            ];
-        }, $files));
 
-        $sql = "INSERT INTO commits (repository_id, sha, author, message, date, additions, deletions, total, files, number_of_comment_lines, commit_changes_quality_score, commit_message_quality_score) 
-                VALUES (:repository_id, :sha, :author, :message, :date, :additions, :deletions, :total, :files, :number_of_comment_lines, :commit_changes_quality_score, :commit_message_quality_score)";
+        $files = array_map(function (array $file) {
+            return [
+                'sha' => $file['sha'],
+                'status' => $file['status'],
+                'additions' => (int) $file['additions'],
+                'deletions' => (int) $file['deletions'],
+                'total' => (int) ($file['total'] ?? $file['changes'] ?? ($file['additions'] + $file['deletions'])),
+                'filename' => $file['filename'],
+                'extension' => $file['extension'] ?? Utils::getFileExtension($file['filename']),
+            ];
+        }, $files);
+
+        $sql = "INSERT INTO commits (repository_id, sha, author, message, date, additions, deletions, total, number_of_comment_lines, commit_changes_quality_score, commit_message_quality_score) 
+                VALUES (:repository_id, :sha, :author, :message, :date, :additions, :deletions, :total, :number_of_comment_lines, :commit_changes_quality_score, :commit_message_quality_score)";
 
         $this->prepareAndExecute($sql, [
             ':repository_id' => [$repositoryId, PDO::PARAM_INT],
@@ -163,16 +163,40 @@ class GitRepository
             ':additions' => [$additions, PDO::PARAM_INT],
             ':deletions' => [$deletions, PDO::PARAM_INT],
             ':total' => [$total, PDO::PARAM_INT],
-            ':files' => [$filesJson, PDO::PARAM_STR],
             ':number_of_comment_lines' => [$numberOfCommentLines, PDO::PARAM_INT],
             ':commit_changes_quality_score' => [$commitChangesQualityScore, PDO::PARAM_INT],
             ':commit_message_quality_score' => [$commitMessageQualityScore, PDO::PARAM_INT]
         ]);
 
-        return (int)$this->db->lastInsertId();
+        $commitId = (int)$this->db->lastInsertId();
+
+        foreach ($files as $file) {
+            $this->storeCommitFiles($commitId, $file);
+        }
+
+        return $commitId;
     }
 
-    public function getCommit(int $repositoryId, string $sha): ?Commit
+    public function storeCommitFiles(int $commitId, array $file): void
+    {
+        $sql = "INSERT INTO commit_files (commit_id, sha, status, additions, deletions, total, filename, extension) 
+                VALUES (:commit_id, :sha, :status, :additions, :deletions, :total, :filename, :extension)";
+
+        $params = [
+            ':commit_id' => [$commitId, PDO::PARAM_INT],
+            ':sha' => [$file['sha'], PDO::PARAM_STR],
+            ':status' => [$file['status'], PDO::PARAM_STR],
+            ':additions' => [$file['additions'], PDO::PARAM_INT],
+            ':deletions' => [$file['deletions'], PDO::PARAM_INT],
+            ':total' => [$file['total'], PDO::PARAM_INT],
+            ':filename' => [$file['filename'], PDO::PARAM_STR],
+            ':extension' => [$file['extension'], PDO::PARAM_STR]
+        ];
+
+        $this->prepareAndExecute($sql, $params);
+    }
+
+    public function getCommit(int $repositoryId, string $sha, bool $includeFiles = true): ?Commit
     {
         $sql = "SELECT * FROM commits WHERE repository_id = :repository_id AND sha = :sha";
         $result = $this->fetchSingleResult($sql, [
@@ -181,14 +205,22 @@ class GitRepository
         ]);
 
         if ($result) {
-            $files = $this->mapCommitFiles(json_decode($result['files'], true), (int)$result['id']);
+            $files = [];
+
+            if ($includeFiles) {
+                $sql = "SELECT * FROM commit_files WHERE commit_id = :commit_id";
+                $files = $this->fetchAllResults($sql, [
+                    ':commit_id' => [(int)$result['id'], PDO::PARAM_INT]
+                ]);
+            }
+
             return $this->mapCommit($result, $files);
         }
 
         return null;
     }
 
-    public function getCommitById(int $commitId): ?Commit
+    public function getCommitById(int $commitId, bool $includeFiles = true): ?Commit
     {
         $sql = "SELECT * FROM commits WHERE id = :commit_id";
         $result = $this->fetchSingleResult($sql, [
@@ -196,7 +228,15 @@ class GitRepository
         ]);
 
         if ($result) {
-            $files = $this->mapCommitFiles(json_decode($result['files'], true), (int)$result['id']);
+            $files = [];
+
+            if ($includeFiles) {
+                $sql = "SELECT * FROM commit_files WHERE commit_id = :commit_id";
+                $files = $this->fetchAllResults($sql, [
+                    ':commit_id' => [(int)$result['id'], PDO::PARAM_INT]
+                ]);
+            }
+
             return $this->mapCommit($result, $files);
         }
 
@@ -226,7 +266,7 @@ class GitRepository
             ':token' => [$token, PDO::PARAM_STR]
         ]);
 
-        return $result ? new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], $result['is_active'], $result['created_at'], $result['last_fetched_at']) : null;
+        return $result ? new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], (bool) $result['is_active'], $result['created_at'], $result['last_fetched_at']) : null;
     }
 
     public function create(GitToken $gitToken): bool
@@ -265,13 +305,7 @@ class GitRepository
         }
 
         $results = $this->fetchAllResults($sql, $params);
-        return array_map(fn($result) => new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], $result['is_active'], $result['created_at'], $result['last_fetched_at']), $results);
-    }
-
-    public function getAllCommitsWithDetails(): array
-    {
-        $sql = "SELECT c.id, c.message, c.files AS diffs FROM commits c";
-        return $this->fetchAllResults($sql);
+        return array_map(fn($result) => new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], (bool) $result['is_active'], $result['created_at'], $result['last_fetched_at']), $results);
     }
 
     public function toggleToken(int $tokenId, bool $isActive, int $userId = 0): int
@@ -305,7 +339,7 @@ class GitRepository
 
         $result = $this->fetchSingleResult($sql, $params);
 
-        return $result ? new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], $result['is_active'], $result['created_at'], $result['last_fetched_at']) : null;
+        return $result ? new GitToken($result['id'], $result['user_id'], $result['token'], $result['service'], $result['url'], $result['description'], (bool) $result['is_active'], $result['created_at'], $result['last_fetched_at']) : null;
     }
 
     public function deleteRepositoriesByTokenId(int $tokenId): int
@@ -412,7 +446,7 @@ class GitRepository
         return $stmt->rowCount();
     }
 
-    public function listCommits(int $repoId = 0, int $userId = 0, $order = 'DESC'): array
+    public function listCommits(int $repoId = 0, int $userId = 0, $order = 'DESC', bool $includeFiles = true): array
     {
         $sql = "SELECT c.* FROM commits c";
         $params = [];
@@ -439,27 +473,21 @@ class GitRepository
         $sql .= " ORDER BY c.date $order";
 
         $results = $this->fetchAllResults($sql, $params);
-        return array_map(function ($result) {
-            $files = $this->mapCommitFiles(json_decode($result['files'], true), (int)$result['id']);
+
+        $results = array_map(function ($result) use ($includeFiles) {
+            $files = [];
+
+            if ($includeFiles) {
+                $sql = "SELECT * FROM commit_files WHERE commit_id = :commit_id";
+                $files = $this->fetchAllResults($sql, [
+                    ':commit_id' => [(int)$result['id'], PDO::PARAM_INT]
+                ]);
+            }
+
             return $this->mapCommit($result, $files);
         }, $results);
-    }
 
-    public function getCommitAnalysisById(int $commitId = 0, int $userId = 0): array
-    {
-        $sql = "SELECT * FROM commit_analysis WHERE commit_id = :commit_id";
-        $params = [
-            ':commit_id' => [$commitId, PDO::PARAM_INT]
-        ];
-
-        if ($userId != 0) {
-            $sql .= " AND (SELECT user_id FROM git_tokens WHERE id = (SELECT git_token_id FROM repositories WHERE id = :repository_id)) = :user_id";
-            $params[':user_id'] = [$userId, PDO::PARAM_INT];
-        }
-
-        $result = $this->fetchSingleResult($sql, $params);
-
-        return $result ? $this->mapCommitFiles(json_decode($result['files'], true), (int)$result['id']) : [];
+        return $results;
     }
 
     public function getRepositoryByHookId(int $hookId): ?Repository

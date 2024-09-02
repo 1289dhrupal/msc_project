@@ -72,14 +72,14 @@ class GitService
         }
     }
 
-    public function listCommits(int $repoId = 0, int $userId = 0): array
+    public function listCommits(int $repoId = 0, int $userId = 0, $includeFiles = false, $slice = 20): array
     {
         $repo = $this->gitRepository->getRepositoryById($repoId, $userId);
         if ($repo === null) {
             throw new Exception('Repository not found');
         }
 
-        $commits = $this->gitRepository->listCommits($repoId, $userId);
+        $commits = $this->gitRepository->listCommits($repoId, $userId, includeFiles: $includeFiles);
         $commitResponse = array_map(function ($commit) {
             return [
                 'id' => $commit->getId(),
@@ -91,11 +91,22 @@ class GitService
                 'additions' => $commit->getAdditions(),
                 'deletions' => $commit->getDeletions(),
                 'total' => $commit->getTotal(),
+                'files' => array_map(function ($file) {
+                    return [
+                        'sha' => $file->getSha(),
+                        'status' => $file->getStatus(),
+                        'additions' => $file->getAdditions(),
+                        'deletions' => $file->getDeletions(),
+                        'total' => $file->getTotal(),
+                        'filename' => $file->getFilename(),
+                        'extension' => $file->getExtension(),
+                    ];
+                }, $commit->getFiles()),
             ];
         }, $commits);
 
-        if ($repoId == 0) {
-            $commitResponse = array_slice($commitResponse, 0, 20);
+        if ($slice) {
+            $commitResponse = array_slice($commitResponse, 0, $slice);
         }
 
         $repos = $this->gitRepository->listRepositories($userId, repoIds: $repoId !== 0 ? "$repoId" : "");

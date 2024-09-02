@@ -127,7 +127,7 @@ abstract class GitProviderService
         $this->gitTokenService->updateFetchedAt($gitTokenId);
     }
 
-    public function syncAll(): void
+    public function syncAll(): array
     {
         $gitTokens = $this->fetchGitTokens();
 
@@ -178,6 +178,8 @@ abstract class GitProviderService
                 ];
 
                 $this->sendSyncAlertEmail($gitToken, $summary);
+
+                return $summary;
             } catch (Exception $e) {
                 throw new ErrorException("Failed to sync repositories for token {$gitToken['id']}: " . $e->getMessage());
             }
