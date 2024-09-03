@@ -14,9 +14,16 @@ class SuccessResponse extends Response
         $this->data = $data;
     }
 
+    // Getters
     public function getData(): mixed
     {
         return $this->data;
+    }
+
+    // Setters
+    public function setData(mixed $data): void
+    {
+        $this->data = $data;
     }
 
     public function toArray(): array

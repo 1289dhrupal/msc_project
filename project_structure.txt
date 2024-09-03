@@ -7,7 +7,6 @@
     |   composer.lock
     |   notes.txt
     |   project_structure.txt
-    |   tree.txt
     |   
     +---migration
     |       msc_project.sql
@@ -75,6 +74,18 @@
     |   \---Templates
     |           real_time_activity_alert.txt
     |           token_sync.txt
-    |           
+    |
+    +---tests
+    |   |
+    |   +---Controllers
+    |   |   
+    |   +---Middleware
+    |   |   
+    |   +---Models
+    |   |   
+    |   +---Repositories
+    |   |   
+    |   \---Services
+    |       
     \---vendor
             *******

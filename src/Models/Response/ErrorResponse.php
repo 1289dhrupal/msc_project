@@ -27,6 +27,17 @@ class ErrorResponse extends Response
         return $this->error;
     }
 
+    // Setters
+    public function setCode(int $code): void
+    {
+        $this->code = $code;
+    }
+
+    public function setError(string $error): void
+    {
+        $this->error = $error;
+    }
+
     // Convert the error response to an array
     public function toArray(): array
     {

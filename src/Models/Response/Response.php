@@ -33,6 +33,22 @@ abstract class Response
         return $this->headers;
     }
 
+    // Setters
+    public function setMessage(string $message): void
+    {
+        $this->message = $message;
+    }
+
+    public function setStatusCode(int $statusCode): void
+    {
+        $this->statusCode = $statusCode;
+    }
+
+    public function setHeaders(array $headers): void
+    {
+        $this->headers = $headers;
+    }
+
     // Sends the response
     public function send(): void
     {

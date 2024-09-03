@@ -44,8 +44,12 @@ class Mailer
         }
     }
 
-    public function sendEmail(string $to, string $subject, string $body, array $attachments = []): void
+    public function sendEmail(string $to, string $subject, string $body, array $attachments = []): bool
     {
+        if ($subject === '' || $body === '' || $to === '') {
+            return false;
+        }
+
         try {
             // Recipients
             $this->mail->clearAddresses();
@@ -63,7 +67,7 @@ class Mailer
             $this->mail->Subject = $subject;
             $this->mail->Body = $body;
 
-            $this->mail->send();
+            return $this->mail->send();
         } catch (MailException $e) {
             throw new ErrorException("Email could not be sent to {$to}. Mailer Error: {$this->mail->ErrorInfo}" . $e->getMessage(), 500, previous: $e);
         }
