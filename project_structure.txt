@@ -1,0 +1,80 @@
+\---backend
+    |   .env
+    |   .env.sample
+    |   .gitignore
+    |   .htaccess
+    |   composer.json
+    |   composer.lock
+    |   notes.txt
+    |   project_structure.txt
+    |   tree.txt
+    |   
+    +---migration
+    |       msc_project.sql
+    |       
+    +---public
+    |       index.php
+    |       
+    +---src
+    |   |   Database.php
+    |   |   Mailer.php
+    |   |   Utils.php
+    |   |   
+    |   +---Controllers
+    |   |       DashboardController.php
+    |   |       GitController.php
+    |   |       GitTokenController.php
+    |   |       UserController.php
+    |   |       WebHookController.php
+    |   |       
+    |   +---Middleware
+    |   |       AuthMiddleware.php
+    |   |       
+    |   +---Models
+    |   |   |   Alert.php
+    |   |   |   Commit.php
+    |   |   |   CommitFile.php
+    |   |   |   GitToken.php
+    |   |   |   Repository.php
+    |   |   |   Session.php
+    |   |   |   User.php
+    |   |   |   
+    |   |   \---Response
+    |   |           ErrorResponse.php
+    |   |           Response.php
+    |   |           SuccessResponse.php
+    |   |           
+    |   +---Repositories
+    |   |       ActivityRepository.php
+    |   |       GitRepository.php
+    |   |       SessionRepository.php
+    |   |       UserRepository.php
+    |   |       
+    |   +---Routing
+    |   |       Orchestrator.php
+    |   |       Router.php
+    |   |       
+    |   +---Scripts
+    |   |       InactivityAlert.php
+    |   |       SyncRepositories.php
+    |   |       
+    |   +---Services
+    |   |       ActivityService.php
+    |   |       ai_integrations.json
+    |   |       GitAnalysisService.php
+    |   |       GithubService.php
+    |   |       GitLabService.php
+    |   |       GitProviderService.php
+    |   |       GitService.php
+    |   |       GitTokenService.php
+    |   |       OpenAIService.php
+    |   |       output.json
+    |   |       sample_input.json
+    |   |       UserService.php
+    |   |       
+    |   \---Templates
+    |           real_time_activity_alert.txt
+    |           token_sync.txt
+    |           
+    \---vendor
+            *******

@@ -23,14 +23,22 @@ class Utils
 
         // Mask the middle section, keeping 3 characters visible if possible
         $visibleMiddleChars = min(3, strlen($middle));
-        $maskedMiddle = str_repeat('*', strlen($middle) - $visibleMiddleChars);
+        $maskedLength = strlen($middle) - $visibleMiddleChars;
 
-        // Show a few characters from the middle section randomly
+        // Replace the masked portion with **{count}**
+        if ($maskedLength > 0) {
+            $maskedMiddle = '**' . $maskedLength . '**';
+        } else {
+            $maskedMiddle = $middle; // No masking if the middle section is too short
+        }
+
+        // Show a few characters from the middle section
         $visibleMiddle = substr($middle, 0, $visibleMiddleChars);
         $maskedToken = $prefix . $visibleMiddle . $maskedMiddle . $end;
 
         return $maskedToken;
     }
+
 
     public static function isCodeFile(string $fileName, int $fileChanges): bool
     {

@@ -126,6 +126,43 @@ class GitService
         return ["commits" => $commitResponse, "repositories" => $repoResponse];
     }
 
+    public function getCommitStats(int $commitId, int $userId = 0): array
+    {
+        $commit = $this->gitRepository->getCommitById($commitId);
+        if ($commit === null) {
+            throw new Exception('Commit not found');
+        }
+
+        $files = $commit->getFiles();
+        $response = [
+            'id' => $commit->getId(),
+            'repository_id' => $commit->getRepositoryId(),
+            'sha' => $commit->getSha(),
+            'author' => $commit->getAuthor(),
+            'message' => $commit->getMessage(),
+            'date' => $commit->getDate(),
+            'additions' => $commit->getAdditions(),
+            'deletions' => $commit->getDeletions(),
+            'total' => $commit->getTotal(),
+            'number_of_comment_lines' => $commit->getNumberOfCommentLines(),
+            'commit_changes_quality_score' => $commit->getCommitChangesQualityScore(),
+            'commit_message_quality_score' => $commit->getCommitMessageQualityScore(),
+            'files' => array_map(function ($file) {
+                return [
+                    'sha' => $file->getSha(),
+                    'status' => $file->getStatus(),
+                    'additions' => $file->getAdditions(),
+                    'deletions' => $file->getDeletions(),
+                    'total' => $file->getTotal(),
+                    'filename' => $file->getFilename(),
+                    'extension' => $file->getExtension(),
+                ];
+            }, $files),
+        ];
+
+        return $response;
+    }
+
     public function getStats(int $repoId, int $userId = 0): array
     {
         $repo = $this->gitRepository->getRepositoryById($repoId, $userId);

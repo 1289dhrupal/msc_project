@@ -43,6 +43,8 @@ Router::get('/verify', UserController::class, 'verify');
 Router::post('/register', UserController::class, 'register');
 Router::post('/login', UserController::class, 'login');
 Router::post('/logout', UserController::class, 'logout', [AuthMiddleware::class]);
+Router::get('/reset-password', UserController::class, 'requestPasswordReset');
+Router::post('/reset-password', UserController::class, 'verifyPasswordReset');
 Router::get('/user', UserController::class, 'getUser', [AuthMiddleware::class]);
 Router::post('/user', UserController::class, 'updateUser', [AuthMiddleware::class]);
 Router::post('/user/alerts', UserController::class, 'updateAlerts', [AuthMiddleware::class]);
@@ -56,6 +58,8 @@ Router::post('/git-token/${tokenId}/toggle', GitTokenController::class, 'toggle'
 Router::get('/git/repositories/list', GitController::class, 'listRepositories', [AuthMiddleware::class]);
 Router::get('/git/repositories/${repositoryId}/commits', GitController::class, 'listCommits', [AuthMiddleware::class]);
 Router::get('/git/commits', GitController::class, 'listCommits', [AuthMiddleware::class]);
+Router::get('/git/commits/${commitId}/stats', GitController::class, 'listCommitStats', [AuthMiddleware::class]);
+
 Router::post('/git/repositories/${repositoryId}/toggle', GitController::class, 'toggleRepository', [AuthMiddleware::class]);
 Router::delete('/git/repositories/${repositoryId}', GitController::class, 'deleteRepository', [AuthMiddleware::class]);
 Router::get('/git/repositories/${repositoryId}/stats', GitController::class, 'getStats', [AuthMiddleware::class]);

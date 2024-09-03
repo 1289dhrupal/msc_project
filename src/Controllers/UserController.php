@@ -151,4 +151,37 @@ class UserController
             throw new ErrorException('Failed to update user alerts', 400, E_USER_WARNING, previous: $e);
         }
     }
+
+    public function requestPasswordReset(): Response
+    {
+        try {
+            $email = $_GET['email'] ?? '';
+            $this->service->requestPasswordReset($email);
+
+            return new SuccessResponse('Password reset email sent');
+        } catch (Exception $e) {
+            throw new ErrorException('Failed to send password reset email', 400, E_USER_WARNING, previous: $e);
+        }
+    }
+
+    public function verifyPasswordReset(): Response
+    {
+        try {
+            $input = array_merge(['token' => '', 'email' => '', 'new_password' => ''], $_POST);
+
+            if (!filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {
+                throw new ErrorException('Invalid email address', 400, E_USER_WARNING);
+            }
+
+            if (isset($input['password']) && strlen($input['password']) > 0 && strlen($input['password']) < 8) {
+                throw new ErrorException('Password must be at least 8 characters long', 400, E_USER_WARNING);
+            }
+
+            $this->service->verifyPasswordReset($input['email'], $input['token'], $input['new_password']);
+
+            return new SuccessResponse('Password reset successful');
+        } catch (Exception $e) {
+            throw new ErrorException('Failed to reset password', 400, E_USER_WARNING, previous: $e);
+        }
+    }
 }

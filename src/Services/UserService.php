@@ -152,6 +152,77 @@ class UserService
         return $this->userRepository->setUserAlerts($alert);
     }
 
+    public function requestPasswordReset(string $email): void
+    {
+        $user = $this->userRepository->getUserByEmail($email);
+
+        if ($user === null) {
+            throw new ErrorException('User not found',  404, E_USER_WARNING);
+        }
+
+        if ($user->getStatus() === 'inactive') {
+            throw new ErrorException('User account is inactive, please contact the admin',  403, E_USER_WARNING);
+        }
+
+        $timestamp = time();
+        $data = $user->getId() . $user->getEmail() . $timestamp;
+        $resetToken = hash_hmac('sha256', $data, $user->getPassword()) . ':' . $timestamp;
+
+        $this->sendPasswordResetEmail($user, $resetToken);
+    }
+
+    public function verifyPasswordReset(string $email, string $token, string $newPassword): bool
+    {
+        $user = $this->userRepository->getUserByEmail($email);
+
+        if ($user === null) {
+            throw new ErrorException('User not found',  404, E_USER_WARNING);
+        }
+
+        // Split the token into the HMAC part and the timestamp part
+        list($providedHmac, $timestamp) = explode(':', $token);
+
+        // Check if the token has expired (e.g., 1 hour expiration time)
+        $tokenExpiration = 3600; // 1 hour
+        if ((time() - $timestamp) > $tokenExpiration) {
+            throw new ErrorException('Reset token has expired',  401, E_USER_WARNING);
+        }
+
+        // Recalculate the HMAC using the same method as during token generation
+        $data = $user->getId() . $user->getEmail() . $timestamp;
+        $expectedHmac = hash_hmac('sha256', $data, $user->getPassword());
+
+        // Verify the provided HMAC matches the expected HMAC
+        if (!hash_equals($providedHmac, $expectedHmac)) {
+            throw new ErrorException('Invalid reset token',  401, E_USER_WARNING);
+        }
+
+        $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
+        $user->setPassword($hashedPassword);
+        $user->setStatus('active');
+
+        $this->userRepository->updateUser($user);
+
+        return true;
+    }
+
+
+    private function sendPasswordResetEmail(User $user, string $resetToken): void
+    {
+        $mailer = Mailer::getInstance();
+
+        try {
+            $to = $user->getEmail();
+            $subject = 'Password Reset Request';
+            $resetUrl = $_ENV['VITE_BASE_URL'] . "/auth/reset-password?email=$to&token=$resetToken";
+            $body = "<p>Please click the following link to reset your password: <a href=\"$resetUrl\">Reset Password</a></p>";
+
+            $mailer->sendEmail($to, $subject, $body);
+        } catch (MailException $e) {
+            throw new RuntimeException('Password reset email could not be sent. Error: ' . $e->getMessage(), 500, $e);
+        }
+    }
+
     private function sendVerificationEmail(User $user): void
     {
         $mailer = Mailer::getInstance();

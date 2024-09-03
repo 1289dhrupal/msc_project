@@ -83,4 +83,16 @@ class GitController
             throw new ErrorException('Failed to fetch stats', 400, E_USER_WARNING, previous: $e);
         }
     }
+
+    public function listCommitStats(int $commitId): Response
+    {
+        try {
+            global $userSession;
+
+            $stats = $this->gitService->getCommitStats($commitId, $userSession->getId());
+            return new SuccessResponse("Successfully fetched commit stats", $stats);
+        } catch (Exception $e) {
+            throw new ErrorException('Failed to fetch commit stats', 400, E_USER_WARNING, previous: $e);
+        }
+    }
 }
