@@ -11,15 +11,15 @@
         <env name="ENV" value="dev"/>
         <env name="APP_NAME" value="msc-project"/>
         <env name="DB_HOST" value="localhost"/>
-        <env name="DB_NAME" value="msc_project"/>
-        <env name="DB_USER" value="root"/>
-        <env name="DB_PASS" value="your_db_password_here"/>
+        <env name="DB_NAME" value="msc_project_test"/>
+        <env name="DB_USER" value="msc_project"/>
+        <env name="DB_PASS" value="msc_project"/>
         <env name="SMTP_HOST" value="smtp.gmail.com"/>
-        <env name="SMTP_USER" value="your_email@gmail.com"/>
-        <env name="SMTP_PASS" value="your_smtp_password_here"/>
+        <env name="SMTP_USER" value="dps30.msc.project@gmail.com"/>
+        <env name="SMTP_PASS" value="urnq oiff blxl jzjs"/>
         <env name="SMTP_PORT" value="587"/>
         <env name="SMTP_SECURE" value="tls"/>
-        <env name="SMTP_FROM" value="your_email@gmail.com"/>
+        <env name="SMTP_FROM" value="dps30.msc.project@gmail.com"/>
         <env name="SMTP_FROM_NAME" value="MSC PROJECT"/>
     </php>
   <source>
