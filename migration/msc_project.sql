@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jul 27, 2024 at 10:45 PM
+-- Generation Time: Sep 03, 2024 at 06:27 PM
 -- Server version: 8.0.34
 -- PHP Version: 8.2.12
 
@@ -24,6 +24,19 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `alerts`
+--
+
+CREATE TABLE `alerts` (
+  `user_id` int NOT NULL,
+  `inactivity` tinyint(1) NOT NULL DEFAULT '1',
+  `sync` tinyint(1) NOT NULL DEFAULT '1',
+  `realtime` tinyint(1) NOT NULL DEFAULT '1'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `commits`
 --
 
@@ -37,21 +50,28 @@ CREATE TABLE `commits` (
   `additions` int DEFAULT NULL,
   `deletions` int DEFAULT NULL,
   `total` int DEFAULT NULL,
-  `files` json DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `number_of_comment_lines` int NOT NULL,
+  `commit_changes_quality_score` int NOT NULL,
+  `commit_message_quality_score` int NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `commit_analysis`
+-- Table structure for table `commit_files`
 --
 
-CREATE TABLE `commit_analysis` (
-  `id` int NOT NULL,
+CREATE TABLE `commit_files` (
+  `id` bigint UNSIGNED NOT NULL,
   `commit_id` int NOT NULL,
-  `quality` int DEFAULT NULL,
-  `commit_type` varchar(50) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL
+  `sha` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL,
+  `status` varchar(50) COLLATE utf8mb4_unicode_520_ci NOT NULL,
+  `additions` int NOT NULL,
+  `deletions` int NOT NULL,
+  `total` int NOT NULL,
+  `filename` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL,
+  `extension` varchar(50) COLLATE utf8mb4_unicode_520_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 -- --------------------------------------------------------
@@ -65,8 +85,11 @@ CREATE TABLE `git_tokens` (
   `user_id` int NOT NULL,
   `token` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL,
   `service` enum('github','gitlab') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
+  `url` varchar(255) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
+  `description` varchar(150) COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `last_fetched` timestamp NULL DEFAULT NULL
+  `last_fetched_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
 -- --------------------------------------------------------
@@ -80,8 +103,11 @@ CREATE TABLE `repositories` (
   `git_token_id` int NOT NULL,
   `owner` varchar(255) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
   `name` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL,
+  `default_branch` varchar(100) COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT 'main',
+  `hook_id` int NOT NULL,
   `url` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL,
   `description` text COLLATE utf8mb4_unicode_520_ci,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `last_fetched_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
@@ -118,6 +144,12 @@ CREATE TABLE `users` (
 --
 
 --
+-- Indexes for table `alerts`
+--
+ALTER TABLE `alerts`
+  ADD UNIQUE KEY `alerts_user_id` (`user_id`);
+
+--
 -- Indexes for table `commits`
 --
 ALTER TABLE `commits`
@@ -125,11 +157,12 @@ ALTER TABLE `commits`
   ADD UNIQUE KEY `repository_id` (`repository_id`,`sha`);
 
 --
--- Indexes for table `commit_analysis`
+-- Indexes for table `commit_files`
 --
-ALTER TABLE `commit_analysis`
+ALTER TABLE `commit_files`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `commit_id` (`commit_id`);
+  ADD UNIQUE KEY `id` (`id`),
+  ADD KEY `fk_commit` (`commit_id`);
 
 --
 -- Indexes for table `git_tokens`
@@ -170,10 +203,10 @@ ALTER TABLE `commits`
   MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `commit_analysis`
+-- AUTO_INCREMENT for table `commit_files`
 --
-ALTER TABLE `commit_analysis`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+ALTER TABLE `commit_files`
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `git_tokens`
@@ -204,16 +237,16 @@ ALTER TABLE `commits`
   ADD CONSTRAINT `commits_ibfk_1` FOREIGN KEY (`repository_id`) REFERENCES `repositories` (`id`);
 
 --
--- Constraints for table `commit_analysis`
+-- Constraints for table `commit_files`
 --
-ALTER TABLE `commit_analysis`
-  ADD CONSTRAINT `commit_analysis_ibfk_1` FOREIGN KEY (`commit_id`) REFERENCES `commits` (`id`);
+ALTER TABLE `commit_files`
+  ADD CONSTRAINT `commit_files_ibfk_1` FOREIGN KEY (`commit_id`) REFERENCES `commits` (`id`);
 
 --
 -- Constraints for table `git_tokens`
 --
 ALTER TABLE `git_tokens`
-  ADD CONSTRAINT `token_added_by` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+  ADD CONSTRAINT `git_tokens_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
 
 --
 -- Constraints for table `repositories`
@@ -225,7 +258,7 @@ ALTER TABLE `repositories`
 -- Constraints for table `sessions`
 --
 ALTER TABLE `sessions`
-  ADD CONSTRAINT `user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+  ADD CONSTRAINT `sessions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

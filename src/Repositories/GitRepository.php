@@ -344,16 +344,22 @@ class GitRepository
 
     public function deleteRepositoriesByTokenId(int $tokenId): int
     {
-        $sql = "DELETE FROM repositories WHERE git_token_id = :git_token_id";
-        $stmt = $this->prepareAndExecute($sql, [
+        $sql = "SELECT * FROM repositories WHERE git_token_id = :git_token_id";
+        $results = $this->fetchAllResults($sql, [
             ':git_token_id' => [$tokenId, PDO::PARAM_INT]
         ]);
 
-        return $stmt->rowCount();
+        $count = 0;
+        foreach ($results as $result) {
+            $count += $this->deleteRepository((int) $result['id']);
+        }
+        return $count;
     }
 
     public function deleteToken(int $tokenId, int $userId = 0): int
     {
+        $count = $this->deleteRepositoriesByTokenId($tokenId);
+
         $sql = "DELETE FROM git_tokens WHERE id = :id";
         $params = [
             ':id' => [$tokenId, PDO::PARAM_INT]
@@ -364,8 +370,8 @@ class GitRepository
             $params[':user_id'] = [$userId, PDO::PARAM_INT];
         }
 
-        $stmt = $this->prepareAndExecute($sql, $params);
-        return $stmt->rowCount();
+        $this->prepareAndExecute($sql, $params);
+        return $count;
     }
 
     public function listRepositories(int $userId = 0, int $gitTokenId = 0, string $repoIds = ""): array
@@ -431,17 +437,22 @@ class GitRepository
         return $stmt->rowCount();
     }
 
-    public function deleteRepository(int $repoId, int $userId = 0): int
+    public function deleteRepository(int $repoId): int
     {
+        $sql = "DELETE cf FROM commit_files cf JOIN commits c ON cf.commit_id = c.id WHERE c.repository_id = :id";
+        $this->prepareAndExecute($sql, [
+            ':id' => [$repoId, PDO::PARAM_INT]
+        ]);
+
+        $sql = "DELETE FROM commits WHERE repository_id = :id";
+        $this->prepareAndExecute($sql, [
+            ':id' => [$repoId, PDO::PARAM_INT]
+        ]);
+
         $sql = "DELETE FROM repositories WHERE id = :id";
         $params = [
             ':id' => [$repoId, PDO::PARAM_INT]
         ];
-
-        if ($userId != 0) {
-            $sql .= " AND (SELECT user_id FROM git_tokens WHERE id = git_token_id AND IS NOT is_active) = :user_id";
-            $params[':user_id'] = [$userId, PDO::PARAM_INT];
-        }
 
         $stmt = $this->prepareAndExecute($sql, $params);
         return $stmt->rowCount();

@@ -78,10 +78,8 @@ class GitTokenService
     public function delete(int $tokenId, int $userId = 0): void
     {
         $gitToken = $this->gitRepository->getToken($tokenId, $userId);
-        if ($gitToken === null) {
-            // TODO: Delete
-            // $this->gitRepository->deleteRepositoriesByTokenId($tokenId);
 
+        if ($gitToken === null) {
             throw new InvalidArgumentException('Token not found');
         }
 

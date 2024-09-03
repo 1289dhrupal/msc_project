@@ -63,8 +63,11 @@ class GitService
     {
         $repo = $this->gitRepository->getRepositoryById($repoId, $userId);
         if ($repo !== null) {
-            // TODO: Delete
-            // $this->gitRepository->deleteRepositoriesByTokenId($tokenId);
+            $gitToken = $this->gitRepository->getToken($repo->getGitTokenId());
+
+            if ($gitToken->isActive()) {
+                throw new Exception('Cannot delete repository with active token.');
+            }
 
             $this->gitRepository->deleteRepository($repoId, $userId);
         } else {
