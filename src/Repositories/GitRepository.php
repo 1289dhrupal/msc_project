@@ -12,6 +12,7 @@ use MscProject\Models\CommitFile;
 use MscProject\Utils;
 use PDO;
 use PDOStatement;
+use Exception;
 
 class GitRepository
 {
@@ -522,5 +523,23 @@ class GitRepository
             ':description' => [$gitToken->getDescription(), PDO::PARAM_STR],
             ':id' => [$gitToken->getId(), PDO::PARAM_INT]
         ]);
+    }
+
+    public function sync(int $repoId = 0, int $gitTokenId = 0): void
+    {
+        try {
+            // Define the path to the SyncRepositories.php script
+            $scriptPath = __DIR__ . '/../Scripts/SyncRepositories.php';
+
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                // Windows: Use "start /B" to run the script in the background
+                exec("start /B php $scriptPath -r $repoId -g $gitTokenId");
+            } else {
+                // Linux/Mac: Use "nohup" to run the script in the background
+                exec("nohup php $scriptPath > /dev/null 2>&1 &");
+            }
+        } catch (Exception $e) {
+            // DO NOTHING
+        }
     }
 }

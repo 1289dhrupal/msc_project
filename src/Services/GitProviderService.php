@@ -67,9 +67,9 @@ abstract class GitProviderService
 
     abstract protected function getCommitSummaries(array $commit, array $commitDetails): string;
 
-    public function fetchGitTokens(): array
+    public function fetchGitTokens(array $gitTokenIds = []): array
     {
-        return $this->gitTokenService->list(service: $this->service);
+        return $this->gitTokenService->list(service: $this->service, gitTokenIds: $gitTokenIds);
     }
 
     public function getRepository(int $gitTokenId, string $owner, string $name): array
@@ -127,9 +127,20 @@ abstract class GitProviderService
         $this->gitTokenService->updateFetchedAt($gitTokenId);
     }
 
-    public function syncAll(): array
+    public function syncAll(int $repositoryIdToSync, int $gitTokenIdToSync): array
     {
-        $gitTokens = $this->fetchGitTokens();
+        if ($repositoryIdToSync) {
+            $gitTokenIdToSync = $this->gitRepository->getRepositoryById($repositoryIdToSync)->getGitTokenId();
+        }
+
+        if ($gitTokenIdToSync) {
+            $gitTokens = $this->fetchGitTokens([$gitTokenIdToSync]);
+        } else {
+            $gitTokens = $this->fetchGitTokens();
+        }
+        echo "git tokens: " . json_encode($gitTokens) . "\n";
+
+        $summary = [];
 
         foreach ($gitTokens as $gitToken) {
             if (!$gitToken['is_active']) {
@@ -156,6 +167,10 @@ abstract class GitProviderService
                         continue;
                     }
 
+                    if ($repositoryIdToSync && $repo['id'] !== $repositoryIdToSync) {
+                        continue;
+                    }
+
                     $repositoryId = $repo['id'] ?? 0;
 
                     if (!$repositoryId) {
@@ -175,20 +190,22 @@ abstract class GitProviderService
                 }
 
                 $this->updateTokenFetchedAt($gitToken['id']);
-                $summary = [
+                $current_summary = [
                     'user_id' => $gitToken['user_id'],
                     'git_token' => Utils::maskToken($gitToken['token']),
                     'url' => $gitToken['url'],
                     'repositories' => $repositorySummaries
                 ];
 
-                $this->sendSyncAlertEmail($gitToken, $summary);
+                $summary[] = $current_summary;
 
-                return $summary;
+                $this->sendSyncAlertEmail($gitToken, $current_summary);
             } catch (Exception $e) {
                 throw new ErrorException("Failed to sync repositories for token {$gitToken['id']}: " . $e->getMessage());
             }
         }
+
+        return $summary;
     }
 
     private function manageWebhooks(array $repository, string $repoPath, int $gitTokenId): int

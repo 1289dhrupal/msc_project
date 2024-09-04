@@ -29,9 +29,10 @@ class GitTokenService
         return $this->gitRepository->create($newToken);
     }
 
-    public function list(int $userId = 0, bool $mask = false, string $service = ''): array
+    public function list(int $userId = 0, bool $mask = false, string $service = '', $gitTokenIds = []): array
     {
-        $gitTokens = $this->gitRepository->listTokens($userId, service: $service);
+        $gitTokenIds =  implode(',', $gitTokenIds);
+        $gitTokens = $this->gitRepository->listTokens($userId, $gitTokenIds, $service);
         return array_map(function (GitToken $gitToken) use ($mask) {
             $token = $mask ? Utils::maskToken($gitToken->getToken()) : $gitToken->getToken();
             return [
@@ -72,7 +73,10 @@ class GitTokenService
 
     public function toggle(int $tokenId, bool $isActive, int $userId = 0): void
     {
-        $this->gitRepository->toggleToken($tokenId, $isActive, $userId);
+        $updated = $this->gitRepository->toggleToken($tokenId, $isActive, $userId);
+        if ($updated && $isActive) {
+            $this->gitRepository->sync(gitTokenId: $tokenId);
+        }
     }
 
     public function delete(int $tokenId, int $userId = 0): void

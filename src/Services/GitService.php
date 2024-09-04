@@ -56,7 +56,10 @@ class GitService
 
     public function toggleRepository(int $repoId, bool $isActive, int $userId = 0): void
     {
-        $this->gitRepository->toggleRepository($repoId, $isActive, $userId);
+        $updated = $this->gitRepository->toggleRepository($repoId, $isActive, $userId);
+        if ($updated && $isActive) {
+            $this->gitRepository->sync(repoId: $repoId);
+        }
     }
 
     public function deleteRepository(int $repoId, int $userId = 0): void

@@ -18,6 +18,13 @@ try {
     $dotenv = Dotenv::createImmutable(__DIR__ . '/../../');
     $dotenv->load();
 
+    // Parse command-line options
+    $options = getopt('r:g:');
+
+    // Get the repoId and gitTokenId from options
+    $repoId = isset($options['r']) ? (int) $options['r'] : 0;
+    $gitTokenId = isset($options['g']) ? (int) $options['g'] : 0;
+
     // Get the GitHubService instance from the orchestrator
     /** @var GitHubService $githubService */
     $githubService = Orchestrator::getInstance()->get(GitHubService::class);
@@ -28,8 +35,8 @@ try {
 
     // Synchronize GitHub and GitLab repositories and collect stats
     $stats = [
-        'github' => $githubService->syncAll(),
-        'gitlab' => $gitlabService->syncAll(),
+        'github' => $githubService->syncAll($repoId, $gitTokenId),
+        'gitlab' => $gitlabService->syncAll($repoId, $gitTokenId),
     ];
 
     echo "Synchronization completed successfully.\n" . json_encode($stats, JSON_PRETTY_PRINT);
