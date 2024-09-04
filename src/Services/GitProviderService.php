@@ -37,7 +37,7 @@ abstract class GitProviderService
         $this->service = $service;
     }
 
-    abstract protected function authenticate(string $token, string $url): void;
+    abstract protected function authenticate(string $token, string $url): bool;
 
     abstract protected function fetchRepositories(): array;
 
@@ -137,7 +137,12 @@ abstract class GitProviderService
             }
 
             try {
-                $this->authenticate($gitToken['token'], $gitToken['url']);
+
+                if (!$this->authenticate($gitToken['token'], $gitToken['url'])) {
+                    $this->gitTokenService->toggle($gitToken['id'], false);
+                    continue;
+                }
+
                 $repositories = $this->fetchRepositories();
 
                 $repositorySummaries = [];
@@ -220,7 +225,10 @@ abstract class GitProviderService
     public function handlePushEvent(Repository $repository, GitToken $gitToken, string $repoPath): void
     {
         try {
-            $this->authenticate($gitToken->getToken(), $gitToken->getUrl());
+            if (!$this->authenticate($gitToken->getToken(), $gitToken->getUrl())) {
+                $this->gitTokenService->toggle($gitToken->getId(), false);
+                return;
+            }
 
             $commits = $this->fetchCommits($repoPath, $repository->getDefaultBranch());
             $commitSummaries = [];

@@ -7,6 +7,7 @@ namespace MscProject\Services;
 use MscProject\Repositories\GitRepository;
 use MscProject\Repositories\UserRepository;
 use ErrorException;
+use Exception;
 
 class GitLabService extends GitProviderService
 {
@@ -19,11 +20,16 @@ class GitLabService extends GitProviderService
         parent::__construct($gitTokenService, $gitRepository, $gitAnalysisService, $userRepository, self::SERVICE);
     }
 
-    public function authenticate(string $gitlabToken, string $url = null): void
+    public function authenticate(string $gitlabToken, string $url = null): bool
     {
-        $this->gitToken = $gitlabToken;
-        $this->gitlabAPIUrl = $url ? "{$url}/api/v4" : 'https://campus.cs.le.ac.uk/gitlab/api/v4';
-        $this->username = $this->fetchUsername();
+        try {
+            $this->gitToken = $gitlabToken;
+            $this->gitlabAPIUrl = $url ? "{$url}/api/v4" : 'https://campus.cs.le.ac.uk/gitlab/api/v4';
+            $this->username = $this->fetchUsername();
+            return true;
+        } catch (Exception $e) {
+            return false;
+        }
     }
 
     protected function fetchUsername(): string

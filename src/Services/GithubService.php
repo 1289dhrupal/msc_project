@@ -9,6 +9,7 @@ use Github\AuthMethod;
 use MscProject\Repositories\GitRepository;
 use MscProject\Repositories\UserRepository;
 use ErrorException;
+use Exception;
 
 class GithubService extends GitProviderService
 {
@@ -25,10 +26,15 @@ class GithubService extends GitProviderService
         parent::__construct($gitTokenService, $gitRepository, $gitAnalysisService, $userRepository, self::SERVICE);
     }
 
-    public function authenticate(string $githubToken, string $url = null): void
+    public function authenticate(string $githubToken, string $url = null): bool
     {
         $this->client->authenticate($githubToken, AuthMethod::ACCESS_TOKEN);
-        $this->username = $this->fetchUsername();
+        try {
+            $this->username = $this->fetchUsername();
+            return true;
+        } catch (Exception $e) {
+            return false;
+        }
     }
 
     protected function fetchUsername(): string
