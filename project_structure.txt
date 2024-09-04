@@ -6,8 +6,12 @@
     |   composer.json
     |   composer.lock
     |   notes.txt
+    |   phpunit.xml
     |   project_structure.txt
     |   
+    +---.phpunit.cache
+    |       test-results
+    |       
     +---migration
     |       msc_project.sql
     |       
@@ -74,18 +78,36 @@
     |   \---Templates
     |           real_time_activity_alert.txt
     |           token_sync.txt
-    |
+    |           
     +---tests
-    |   |
-    |   +---Controllers
-    |   |   
-    |   +---Middleware
-    |   |   
     |   +---Models
-    |   |   
-    |   +---Repositories
-    |   |   
-    |   \---Services
-    |       
+    |   |   |   AlertTest.php
+    |   |   |   CommitFileTest.php
+    |   |   |   CommitTest.php
+    |   |   |   GitTokenTest.php
+    |   |   |   RepositoryTest.php
+    |   |   |   SessionTest.php
+    |   |   |   UserTest.php
+    |   |   |   
+    |   |   \---Response
+    |   |           ErrorResponseTest.php
+    |   |           SuccessResponseTest.php
+    |   |           
+    |   +---Repository
+    |   |       ActivityRepositoryTest.php
+    |   |       GitRepositoryTest.php
+    |   |       SessionRepositoryTest.php
+    |   |       UserRepositoryTest.php
+    |   |       
+    |   +---Routing
+    |   |       OrchestratorTest.php
+    |   |       RouterTest.php
+    |   |       
+    |   \---Utils
+    |           DatabaseTest.php
+    |           MailerTest.php
+    |           UtilsTest.php
+    |           
     \---vendor
-            *******
+        |
+        \ *
