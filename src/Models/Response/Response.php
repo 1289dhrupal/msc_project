@@ -9,6 +9,7 @@ abstract class Response
     protected string $message;
     protected int $statusCode;
     protected array $headers;
+    protected bool $isSent = false;
 
     public function __construct(string $message, int $statusCode, array $headers = [])
     {
@@ -52,12 +53,17 @@ abstract class Response
     // Sends the response
     public function send(): void
     {
+        if ($this->isSent) {
+            return;
+        }
+
         http_response_code($this->statusCode);
         foreach ($this->headers as $header) {
             header($header);
         }
         header('Content-Type: application/json');
         echo $this->toJson();
+        $isSent = true;
     }
 
     // Abstract method that must be implemented by subclasses

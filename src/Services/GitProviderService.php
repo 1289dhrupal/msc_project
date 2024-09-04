@@ -138,7 +138,6 @@ abstract class GitProviderService
         } else {
             $gitTokens = $this->fetchGitTokens();
         }
-        echo "git tokens: " . json_encode($gitTokens) . "\n";
 
         $summary = [];
 
