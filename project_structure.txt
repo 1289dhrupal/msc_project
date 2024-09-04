@@ -72,7 +72,6 @@
     |   |       GitTokenService.php
     |   |       OpenAIService.php
     |   |       output.json
-    |   |       sample_input.json
     |   |       UserService.php
     |   |       
     |   \---Templates
