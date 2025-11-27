@@ -1,0 +1,17 @@
+Subject: Repository Update: Recent Commits to [Repository Name]
+
+Body:
+Hello,
+
+We wanted to inform you that new activity has been detected in the repository "[Repository Name]."
+
+The following new commits were pushed to the default branch ([Default Branch Name]):
+
+[Commit Summaries]
+
+These updates were successfully processed and stored in our system.
+
+If you have any questions or need further details, please don't hesitate to reach out.
+
+Best regards,
+[Your Name or Team Name]

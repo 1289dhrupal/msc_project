@@ -3,5 +3,20 @@
         "psr-4": {
             "MscProject\\": "src/"
         }
+    },
+    "require": {
+        "vlucas/phpdotenv": "^5.6",
+        "phpmailer/phpmailer": "^6.9",
+        "knplabs/github-api": "^3.14",
+        "symfony/http-client": "^7.1",
+        "nyholm/psr7": "^1.8"
+    },
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.3"
     }
 }
